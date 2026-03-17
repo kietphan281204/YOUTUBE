@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Đăng video + lưu SQL Server
 
 ## 1) Cài đặt
@@ -38,3 +39,6 @@ Server sẽ tự tạo bảng nếu chưa có:
 
 Bạn cũng có thể chạy script `database.sql` để tạo bảng thủ công.
 
+=======
+# youtubee
+>>>>>>> 87407895e1210c588c5859bf2cbf0a53bdf43ae1

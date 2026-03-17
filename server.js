@@ -15,7 +15,8 @@ app.use(cors());
 app.use(express.json());
 
 // Serve the current "Đăng Video" page as-is
-const staticDir = path.join(__dirname, ".vscode");
+// (the HTML/CSS/JS live at the project root now)
+const staticDir = __dirname;
 app.use(express.static(staticDir));
 
 // Because the file is named `INDEX.HTML` (uppercase),
@@ -24,6 +25,7 @@ app.get("/", (_req, res) => {
   res.sendFile(path.join(staticDir, "INDEX.HTML"));
 });
 
+// Keep uploaded videos in a top-level uploads/ folder (ignored by Git).
 const uploadsDir = path.join(staticDir, "uploads");
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 

@@ -31,6 +31,13 @@ npm run dev
 Mở trình duyệt tới `http://localhost:3000` (không mở file HTML trực tiếp / không dùng Live Server),
 vì frontend gọi API tương đối như `/api/videos`.
 
+## 5) Chạy trên GitHub Pages
+
+GitHub Pages **không chạy được** `server.js` (Express + SQL). Vì vậy `script.js` đã có chế độ fallback:
+
+- Nếu không có backend `/api/videos` (404), trang sẽ tự chuyển sang **lưu local trong trình duyệt (IndexedDB)**.
+- Khi chạy local bằng `npm run dev` thì vẫn lưu SQL như bình thường.
+
 ## 4) Bảng SQL
 
 Server sẽ tự tạo bảng nếu chưa có:

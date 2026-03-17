@@ -1,0 +1,62 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    background: #f4f4f4;
+}
+
+header {
+    background: #333;
+    color: white;
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+button {
+    padding: 8px 15px;
+    border: none;
+    background: #007bff;
+    color: white;
+    cursor: pointer;
+    border-radius: 5px;
+}
+
+button:hover {
+    background: #0056b3;
+}
+
+main {
+    padding: 20px;
+}
+
+#videoContainer {
+    margin-top: 15px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 14px;
+}
+
+.videoCard {
+    background: white;
+    border-radius: 10px;
+    padding: 12px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+}
+
+.videoTitle {
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.videoMeta {
+    margin-top: 8px;
+    font-size: 12px;
+    color: #555;
+}
+
+.videoCard video {
+    width: 100%;
+    border-radius: 8px;
+    display: block;
+}

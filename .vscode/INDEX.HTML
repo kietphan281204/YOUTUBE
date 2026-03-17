@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Đăng Video</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Thanh menu -->
+    <header>
+        <h1>Website Video</h1>
+        <button id="homeBtn">Trang chủ</button>
+    </header>
+
+    <!-- Nội dung -->
+    <main>
+        <h2>Đăng Video</h2>
+
+        <input type="text" id="titleInput" placeholder="Tiêu đề (tuỳ chọn)" style="padding:8px;width:min(520px,100%);margin-bottom:10px;">
+        <input type="file" id="videoInput" accept="video/*">
+        <button onclick="uploadVideo()">Đăng Video</button>
+        <div id="status" style="margin-top:10px;"></div>
+
+        <div id="videoContainer"></div>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>

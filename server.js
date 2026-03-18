@@ -11,7 +11,22 @@ const { sqlConfig } = require("./sql.config");
 
 const app = express();
 
-app.use(cors());
+// CORS: allow GitHub Pages frontend to call the API (set FRONTEND_ORIGIN in env).
+// Example: FRONTEND_ORIGIN=https://kiepthan281204.github.io
+const allowedOrigins = (process.env.FRONTEND_ORIGIN || "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+app.use(
+  cors({
+    origin: (origin, cb) => {
+      if (!origin) return cb(null, true); // curl/postman
+      if (allowedOrigins.length === 0) return cb(null, true); // default allow
+      return cb(null, allowedOrigins.includes(origin));
+    },
+  })
+);
 app.use(express.json());
 
 // Serve the current "Đăng Video" page as-is

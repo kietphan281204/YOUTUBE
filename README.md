@@ -31,12 +31,27 @@ npm run dev
 Mở trình duyệt tới `http://localhost:3000` (không mở file HTML trực tiếp / không dùng Live Server),
 vì frontend gọi API tương đối như `/api/videos`.
 
-## 5) Chạy trên GitHub Pages
+## 5) Chạy online (GitHub Pages + backend + SQL)
 
-GitHub Pages **không chạy được** `server.js` (Express + SQL). Vì vậy `script.js` đã có chế độ fallback:
+GitHub Pages **không chạy được** `server.js` (Express + SQL), nên muốn chạy online thật bạn cần:
 
-- Nếu không có backend `/api/videos` (404), trang sẽ tự chuyển sang **lưu local trong trình duyệt (IndexedDB)**.
-- Khi chạy local bằng `npm run dev` thì vẫn lưu SQL như bình thường.
+- **Deploy backend Node (`server.js`)** lên một host (Render/Railway/VPS/Azure App Service…)
+- **Dùng SQL Server online** (khuyến nghị: Azure SQL Database)
+- **Cấu hình frontend**: mở `config.js` và set:
+  - `window.API_BASE = "https://<domain-backend>"` (không có `/` ở cuối)
+
+### Biến môi trường backend cần có
+
+- `PORT` (host thường tự cấp)
+- `DB_SERVER`, `DB_PORT`, `DB_DATABASE`, `DB_USER`, `DB_PASSWORD`
+- `FRONTEND_ORIGIN` (để CORS cho GitHub Pages), ví dụ:
+  - `FRONTEND_ORIGIN=https://kiepthan281204.github.io`
+  - (có thể thêm nhiều origin, phân tách bằng dấu phẩy)
+
+### Lưu ý quan trọng
+
+- File video sẽ được lưu trên máy chủ backend (thư mục `uploads/`). Nếu host “ephemeral disk” (mất dữ liệu khi restart),
+  bạn cần chuyển sang object storage (S3/R2/Azure Blob) để lưu file bền vững.
 
 ## 4) Bảng SQL
 

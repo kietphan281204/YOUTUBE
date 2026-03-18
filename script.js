@@ -1,6 +1,7 @@
-// Nút trang chủ
+// Nút trang chủ: mở API diag trong tab mới để kích hoạt ngrok cho thiết bị
 document.getElementById("homeBtn").onclick = function () {
-    alert("Đây là trang chủ!");
+    const url = apiUrl("/api/diag");
+    window.open(url, "_blank");
 };
 
 // Backend base URL (for GitHub Pages or separate hosting).

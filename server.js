@@ -11,20 +11,10 @@ const { sqlConfig } = require("./sql.config");
 
 const app = express();
 
-// CORS: allow GitHub Pages frontend to call the API (set FRONTEND_ORIGIN in env).
-// Example: FRONTEND_ORIGIN=https://kiepthan281204.github.io
-const allowedOrigins = (process.env.FRONTEND_ORIGIN || "")
-  .split(",")
-  .map((s) => s.trim())
-  .filter(Boolean);
-
+// CORS: for simplicity, allow all origins (suitable for this demo setup with ngrok).
 app.use(
   cors({
-    origin: (origin, cb) => {
-      if (!origin) return cb(null, true); // curl/postman
-      if (allowedOrigins.length === 0) return cb(null, true); // default allow
-      return cb(null, allowedOrigins.includes(origin));
-    },
+    origin: true,
     methods: ["GET", "POST", "OPTIONS"],
     allowedHeaders: ["Content-Type", "ngrok-skip-browser-warning"],
   })
@@ -69,29 +59,16 @@ const upload = multer({
   },
 });
 
-async function ensureTable(pool) {
-  await pool.request().query(`
-IF OBJECT_ID(N'dbo.Video', N'U') IS NULL
-BEGIN
-  CREATE TABLE dbo.Video (
-    Id INT IDENTITY(1,1) PRIMARY KEY,
-    Title NVARCHAR(255) NULL,
-    FileName NVARCHAR(255) NOT NULL,
-    RelativeUrl NVARCHAR(500) NOT NULL,
-    UploadedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
-  );
-END
-`);
-}
-
 app.get("/api/videos", async (_req, res) => {
   try {
     const pool = await sql.connect(sqlConfig);
-    await ensureTable(pool);
     const result = await pool
       .request()
-      .query("SELECT TOP (100) Id, Title, FileName, RelativeUrl, UploadedAt FROM dbo.Video ORDER BY Id DESC");
-    res.json({ ok: true, videos: result.recordset });
+      .query(
+        // Lấy dữ liệu từ bảng cũ dbo.video trong DB VIDEO
+        "SELECT TOP (100) video_id AS Id, tieu_de AS Title, duong_dan_video AS RelativeUrl, ngay_tao AS UploadedAt FROM dbo.video ORDER BY video_id DESC"
+      );
+    res.json({ ok: true, videos: result.recordset || [] });
   } catch (err) {
     res.status(500).json({ ok: false, error: err?.message || String(err) });
   }
@@ -119,18 +96,25 @@ app.post("/api/videos", upload.single("video"), async (req, res) => {
     const title = typeof req.body?.title === "string" ? req.body.title.trim().slice(0, 255) : null;
     if (!req.file) return res.status(400).json({ ok: false, error: "Thiếu file video." });
 
-    const relativeUrl = `/uploads/${req.file.filename}`;
+    const relativeUrl = `/uploads/${req.file.filename}`; // đường dẫn file thật trên server
 
     const pool = await sql.connect(sqlConfig);
-    await ensureTable(pool);
-
+    // NOTE: Bảng dbo.video của bạn có nhiều cột NOT NULL (nguoi_dung_id, luot_xem, thoi_luong, ngay_tao, ngay_cap_nhat, ...).
+    // Ở đây tạm thời gán mặc định:
+    // - nguoi_dung_id = 1
+    // - luot_xem = 0
+    // - thoi_luong = 0
+    // - duong_dan_anh = NULL
+    // - ngay_tao, ngay_cap_nhat = GETDATE()
     const insert = await pool
       .request()
       .input("Title", sql.NVarChar(255), title)
-      .input("FileName", sql.NVarChar(255), req.file.originalname)
-      .input("RelativeUrl", sql.NVarChar(500), relativeUrl)
+      .input("Path", sql.NVarChar(500), relativeUrl)
       .query(
-        "INSERT INTO dbo.Video (Title, FileName, RelativeUrl) OUTPUT INSERTED.Id, INSERTED.Title, INSERTED.FileName, INSERTED.RelativeUrl, INSERTED.UploadedAt VALUES (@Title, @FileName, @RelativeUrl)"
+        // Chèn vào bảng dbo.video với giá trị mặc định cho các cột bắt buộc khác.
+       "INSERT INTO dbo.video (nguoi_dung_id, tieu_de, duong_dan_video, duong_dan_anh_bia, thoi_luong, luot_xem, ngay_tao, ngay_cap_nhat) " +
+  "OUTPUT INSERTED.video_id AS Id, INSERTED.tieu_de AS Title, INSERTED.duong_dan_video AS RelativeUrl, INSERTED.ngay_tao AS UploadedAt " +
+  "VALUES (1, @Title, @Path, @Path, 0, 0, GETDATE(), GETDATE())"
       );
 
     res.json({ ok: true, video: insert.recordset[0] });

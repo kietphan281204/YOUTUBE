@@ -25,6 +25,8 @@ app.use(
       if (allowedOrigins.length === 0) return cb(null, true); // default allow
       return cb(null, allowedOrigins.includes(origin));
     },
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "ngrok-skip-browser-warning"],
   })
 );
 app.use(express.json());

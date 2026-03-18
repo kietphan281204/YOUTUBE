@@ -13,6 +13,14 @@ function apiUrl(path) {
     return API_BASE ? `${API_BASE}${p}` : p;
 }
 
+function apiFetch(path, init = {}) {
+    const headers = new Headers(init.headers || {});
+    // Needed for ngrok free: skip the browser warning interstitial.
+    // Triggers CORS preflight; backend must allow it.
+    headers.set("ngrok-skip-browser-warning", "1");
+    return fetch(apiUrl(path), { ...init, headers });
+}
+
 function setStatus(msg, isError = false) {
     const el = document.getElementById("status");
     if (!el) return;
@@ -59,7 +67,7 @@ async function parseJsonResponse(res) {
 
 async function loadVideos() {
     try {
-        const res = await fetch(apiUrl("/api/videos"));
+        const res = await apiFetch("/api/videos");
         const data = await parseJsonResponse(res);
         if (!data.ok) throw new Error(data.error || "Load failed");
         const videos = Array.isArray(data.videos) ? data.videos : [];
@@ -93,7 +101,7 @@ async function uploadVideo() {
         form.append("title", titleInput?.value || "");
         form.append("video", file);
 
-        const res = await fetch(apiUrl("/api/videos"), { method: "POST", body: form });
+        const res = await apiFetch("/api/videos", { method: "POST", body: form });
         const data = await parseJsonResponse(res);
         if (!res.ok || !data.ok) throw new Error(data.error || "Upload failed");
 

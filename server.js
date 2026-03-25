@@ -12,12 +12,14 @@ const { sqlConfig } = require("./sql.config");
 
 const app = express();
 
-// CORS: for simplicity, allow all origins (suitable for this demo setup with ngrok).
+// CORS: GitHub Pages → ngrok cần preflight; không giới hạn allowedHeaders quá hẹp
+// (trình duyệt có thể gửi thêm header → nếu thiếu sẽ báo Failed to fetch).
 app.use(
   cors({
     origin: true,
-    methods: ["GET", "POST", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "ngrok-skip-browser-warning"],
+    methods: ["GET", "POST", "OPTIONS", "HEAD"],
+    optionsSuccessStatus: 204,
+    maxAge: 86400,
   })
 );
 app.use(express.json());

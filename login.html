@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Đăng nhập - Website Video</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>Website Video</h1>
+        <div class="headerActions">
+            <button id="backHomeBtn">Về trang video</button>
+        </div>
+    </header>
+
+    <main>
+        <h2>Đăng nhập / Đăng ký</h2>
+        <div class="accountBox">
+            <div id="accountInfo">Chưa đăng nhập.</div>
+            <button type="button" id="logoutBtn">Đăng xuất</button>
+        </div>
+        <div class="authTabs">
+            <button type="button" id="showLoginBtn">Đăng nhập</button>
+            <button type="button" id="showRegisterBtn">Đăng ký</button>
+        </div>
+        <form id="loginForm" class="authForm">
+            <input type="text" id="loginInput" placeholder="Tên đăng nhập hoặc email" required>
+            <input type="password" id="loginPasswordInput" placeholder="Mật khẩu" required>
+            <button type="submit">Đăng nhập</button>
+        </form>
+        <form id="registerForm" class="authForm hidden">
+            <input type="text" id="registerUsernameInput" placeholder="Tên đăng nhập" required>
+            <input type="email" id="registerEmailInput" placeholder="Email" required>
+            <input type="password" id="registerPasswordInput" placeholder="Mật khẩu" required>
+            <button type="submit">Đăng ký</button>
+        </form>
+        <div id="authStatus"></div>
+    </main>
+
+    <script src="config.js"></script>
+    <script src="auth.js"></script>
+</body>
+</html>

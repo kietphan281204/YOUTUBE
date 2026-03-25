@@ -3,10 +3,15 @@ document.getElementById("homeBtn").onclick = function () {
     const url = apiUrl("/api/diag");
     window.open(url, "_blank");
 };
+document.getElementById("loginPageBtn").onclick = function () {
+    window.location.href = "login.html";
+};
 
 // Backend base URL (for GitHub Pages or separate hosting).
 // Configure in config.js as: window.API_BASE = "https://your-backend.com"
 const API_BASE = typeof window.API_BASE === "string" ? window.API_BASE.replace(/\/+$/, "") : "";
+const AUTH_STORAGE_KEY = "current_user";
+let currentUser = null;
 
 function apiUrl(path) {
     const p = String(path || "");
@@ -27,6 +32,53 @@ function setStatus(msg, isError = false) {
     if (!el) return;
     el.textContent = msg || "";
     el.style.color = isError ? "#b00020" : "#1b5e20";
+}
+
+function setAuthStatus(msg, isError = false) {
+    const el = document.getElementById("authStatus");
+    if (!el) return;
+    el.textContent = msg || "";
+    el.style.color = isError ? "#b00020" : "#1b5e20";
+}
+
+function saveCurrentUser(user) {
+    currentUser = user || null;
+    if (!currentUser) {
+        localStorage.removeItem(AUTH_STORAGE_KEY);
+        return;
+    }
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(currentUser));
+}
+
+function loadCurrentUser() {
+    try {
+        const raw = localStorage.getItem(AUTH_STORAGE_KEY);
+        if (!raw) return null;
+        return JSON.parse(raw);
+    } catch {
+        return null;
+    }
+}
+
+function renderCurrentUser() {
+    if (currentUser?.ten_dang_nhap) {
+        setAuthStatus(
+            `Đã đăng nhập: ${currentUser.ten_dang_nhap} (ID: ${currentUser.nguoi_dung_id})`,
+            false
+        );
+        setStatus("", false);
+        updateUploadAccess();
+        return;
+    }
+    setAuthStatus("Chưa đăng nhập. Vui lòng vào trang Đăng nhập trước khi đăng video.", true);
+    setStatus("Bạn cần đăng nhập để đăng video.", true);
+    updateUploadAccess();
+}
+
+function updateUploadAccess() {
+    const uploadBtn = document.getElementById("uploadBtn");
+    const canUpload = Boolean(currentUser?.nguoi_dung_id);
+    if (uploadBtn) uploadBtn.disabled = !canUpload;
 }
 
 function renderVideoCard(v) {
@@ -62,7 +114,12 @@ async function parseJsonResponse(res) {
     try {
         return JSON.parse(text);
     } catch (parseError) {
-        throw new Error(`Invalid JSON response (HTTP ${res.status}): ${text.slice(0, 200)}`);
+        // Backend đôi khi trả HTML mặc định (404/route không tồn tại),
+        // nên tránh throw "Invalid JSON" để người dùng thấy đúng lỗi.
+        return {
+            ok: false,
+            error: `Server trả về không phải JSON (HTTP ${res.status}): ${String(text).slice(0, 200)}`,
+        };
     }
 }
 
@@ -85,6 +142,11 @@ async function loadVideos() {
 
 // Hàm đăng video
 async function uploadVideo() {
+    if (!currentUser?.nguoi_dung_id) {
+        setStatus("Bạn chưa đăng nhập. Không thể đăng video.", true);
+        return;
+    }
+
     const input = document.getElementById("videoInput");
     const container = document.getElementById("videoContainer");
     const titleInput = document.getElementById("titleInput");
@@ -100,6 +162,9 @@ async function uploadVideo() {
     try {
         const form = new FormData();
         form.append("title", titleInput?.value || "");
+        if (Number.isFinite(Number(currentUser?.nguoi_dung_id))) {
+            form.append("nguoi_dung_id", String(currentUser.nguoi_dung_id));
+        }
         form.append("video", file);
 
         const res = await apiFetch("/api/videos", { method: "POST", body: form });
@@ -121,5 +186,7 @@ window.addEventListener("DOMContentLoaded", () => {
     if (location.hostname.endsWith("github.io") && !API_BASE) {
         setStatus("Bạn đang mở GitHub Pages nhưng chưa cấu hình backend. Mở `config.js` và set `window.API_BASE`.", true);
     }
+    currentUser = loadCurrentUser();
+    renderCurrentUser();
     loadVideos();
 });

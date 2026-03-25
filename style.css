@@ -13,6 +13,11 @@ header {
     align-items: center;
 }
 
+.headerActions {
+    display: flex;
+    gap: 8px;
+}
+
 button {
     padding: 8px 15px;
     border: none;
@@ -28,6 +33,44 @@ button:hover {
 
 main {
     padding: 20px;
+}
+
+.authTabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.accountBox {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+#accountInfo {
+    font-size: 14px;
+}
+
+.authForm {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.authForm input {
+    padding: 8px;
+    min-width: 220px;
+}
+
+.hidden {
+    display: none;
+}
+
+#authStatus {
+    margin-bottom: 14px;
+    font-size: 14px;
 }
 
 #videoContainer {

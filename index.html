@@ -7,25 +7,28 @@
 </head>
 <body>
 
-    <!-- Thanh menu -->
+    
     <header>
         <h1>Website Video</h1>
-        <button id="homeBtn">Trang chủ</button>
+        <div class="headerActions">
+            <button id="homeBtn">Trang chủ</button>
+            <button id="loginPageBtn">Đăng nhập</button>
+        </div>
     </header>
 
-    <!-- Nội dung -->
     <main>
+        <div id="authStatus"></div>
+
         <h2>Đăng Video</h2>
 
         <input type="text" id="titleInput" placeholder="Tiêu đề (tuỳ chọn)" style="padding:8px;width:min(520px,100%);margin-bottom:10px;">
         <input type="file" id="videoInput" accept="video/*">
-        <button onclick="uploadVideo()">Đăng Video</button>
+        <button id="uploadBtn" onclick="uploadVideo()">Đăng Video</button>
         <div id="status" style="margin-top:10px;"></div>
 
         <div id="videoContainer"></div>
     </main>
 
-    <!-- config.js is for GitHub Pages: set window.API_BASE to your deployed backend -->
     <script src="config.js"></script>
     <script src="script.js"></script>
 </body>

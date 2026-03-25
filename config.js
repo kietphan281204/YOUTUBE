@@ -4,5 +4,7 @@
 //
 // When running locally via `node server.js` and opening http://localhost:<PORT>,
 // you can leave it empty to use same-origin requests.
-window.API_BASE = "https://doreen-nonindulgent-freakishly.ngrok-free.dev";
+// Local mode: để rỗng để gọi cùng origin (http://localhost:8080).
+// Khi deploy GitHub Pages, đổi thành URL ngrok/backend hiện tại.
+window.API_BASE = "";
 

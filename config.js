@@ -6,5 +6,4 @@
 // you can leave it empty to use same-origin requests.
 // Local mode: để rỗng để gọi cùng origin (http://localhost:8080).
 // Khi deploy GitHub Pages, đổi thành URL ngrok/backend hiện tại.
-window.API_BASE = "";
-
+window.API_BASE = "https://abcxyz.ngrok-free.app";

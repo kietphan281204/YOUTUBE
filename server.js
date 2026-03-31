@@ -5,6 +5,7 @@ const cors = require("cors");
 const multer = require("multer");
 const sql = require("mssql");
 const crypto = require("crypto");
+const { execFile } = require("child_process");
 
 require("dotenv").config();
 
@@ -126,6 +127,41 @@ function safeSlice(str, maxChars) {
   if (!Number.isFinite(maxChars) || maxChars === Infinity) return s;
   if (maxChars <= 0) return "";
   return s.slice(0, maxChars);
+}
+
+let ffprobePath = process.env.FFPROBE_PATH || null;
+try {
+  if (!ffprobePath) {
+    // Bundled ffprobe binary (cross-platform) if installed.
+    ffprobePath = require("ffprobe-static").path;
+  }
+} catch {
+  // ffprobe-static may be absent; fallback to client duration.
+}
+
+function probeVideoDurationSeconds(filePath) {
+  return new Promise((resolve) => {
+    if (!ffprobePath) return resolve(0);
+    execFile(
+      ffprobePath,
+      [
+        "-v",
+        "error",
+        "-show_entries",
+        "format=duration",
+        "-of",
+        "default=noprint_wrappers=1:nokey=1",
+        filePath,
+      ],
+      { windowsHide: true },
+      (err, stdout) => {
+        if (err) return resolve(0);
+        const n = Number.parseFloat(String(stdout || "").trim());
+        if (!Number.isFinite(n) || n < 0) return resolve(0);
+        return resolve(Math.round(n));
+      }
+    );
+  });
 }
 
 app.post("/api/auth/register", async (req, res) => {
@@ -700,11 +736,14 @@ app.post("/api/videos", upload.single("video"), async (req, res) => {
           ? String(req.body.title).trim().slice(0, 255)
           : "";
     const rawDuration = Number(req.body?.thoi_luong);
-    const durationSeconds =
+    const clientDuration =
       Number.isFinite(rawDuration) && rawDuration >= 0 ? Math.trunc(rawDuration) : 0;
     if (!req.file) return res.status(400).json({ ok: false, error: "Thiếu file video." });
 
     const relativeUrl = `/uploads/${req.file.filename}`; // đường dẫn file thật trên server
+    const absoluteFilePath = path.join(uploadsDir, req.file.filename);
+    const probedDuration = await probeVideoDurationSeconds(absoluteFilePath);
+    const durationSeconds = probedDuration > 0 ? probedDuration : clientDuration;
 
     const pool = await sql.connect(sqlConfig);
 

@@ -11,6 +11,7 @@
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
+    "ffprobe-static": "^3.1.0",
     "mssql": "^12.2.0",
     "multer": "^2.1.1"
   }

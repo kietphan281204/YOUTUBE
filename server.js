@@ -199,7 +199,50 @@ app.get("/api/videos/:id", async (req, res) => {
         .update(`${ip}|${thietBi}`)
         .digest("hex")
         .slice(0, 12);
-      const tenNguoiXem = `viewer_${viewerHash}`;
+      const ipSafe = ip || "0.0.0.0";
+      const tenNguoiXemDefault = `viewer_${viewerHash}`;
+
+      // Nếu dbo.nguoi_xem có cột nguoi_dung_id NOT NULL, ta phải điền giá trị.
+      // Ưu tiên lấy nguoi_dung_id từ query (nếu frontend gửi), sau đó mới fallback env/first user.
+      const nguoiDungIdFromReq = Number(req.query?.nguoi_dung_id);
+      const defaultEnvId = Number(process.env.DEFAULT_NGUOI_DUNG_ID);
+      let viewerNguoiDungId = NaN;
+      let tenNguoiXem = tenNguoiXemDefault;
+
+      if (cols.has("nguoi_dung_id")) {
+        const candidates = [nguoiDungIdFromReq, defaultEnvId].filter(
+          (x) => Number.isFinite(x) && x > 0
+        );
+
+        for (const cand of candidates) {
+          const ok = await pool
+            .request()
+            .input("Uid", sql.Int, Math.trunc(cand))
+            .query("SELECT 1 AS ok FROM dbo.nguoi_dung WHERE nguoi_dung_id = @Uid");
+          if (ok.recordset?.length) {
+            viewerNguoiDungId = cand;
+            break;
+          }
+        }
+
+        if (!Number.isFinite(viewerNguoiDungId) || viewerNguoiDungId <= 0) {
+          const first = await pool
+            .request()
+            .query("SELECT TOP (1) nguoi_dung_id FROM dbo.nguoi_dung ORDER BY nguoi_dung_id");
+          const raw = first.recordset?.[0]?.nguoi_dung_id;
+          if (raw != null) viewerNguoiDungId = Number(raw);
+        }
+
+        if (Number.isFinite(viewerNguoiDungId) && viewerNguoiDungId > 0 && cols.has("ten_nguoi_xem")) {
+          const name = await pool
+            .request()
+            .input("Uid", sql.Int, Math.trunc(viewerNguoiDungId))
+            .query("SELECT TOP (1) ten_dang_nhap FROM dbo.nguoi_dung WHERE nguoi_dung_id = @Uid");
+          const ten = name.recordset?.[0]?.ten_dang_nhap;
+          tenNguoiXem =
+            ten != null ? String(ten).trim().slice(0, 255) : tenNguoiXemDefault;
+        }
+      }
 
       const hasDiaChiIp = cols.has("dia_chi_ip");
       const hasThietBi = cols.has("thiet_bi");
@@ -208,7 +251,7 @@ app.get("/api/videos/:id", async (req, res) => {
       if (hasDiaChiIp && hasThietBi) {
         const existing = await pool
           .request()
-          .input("Ip", sql.NVarChar(100), ip)
+          .input("Ip", sql.NVarChar(100), ipSafe)
           .input("Tb", sql.NVarChar(500), thietBi)
           .query(
             "SELECT TOP (1) nguoi_xem_id AS Id FROM dbo.nguoi_xem WHERE dia_chi_ip = @Ip AND thiet_bi = @Tb"
@@ -242,12 +285,17 @@ app.get("/api/videos/:id", async (req, res) => {
           if (cols.has("dia_chi_ip")) {
             insertCols.push("dia_chi_ip");
             insertVals.push("@Ip");
-            reqSql.input("Ip", sql.NVarChar(100), ip);
+            reqSql.input("Ip", sql.NVarChar(100), ipSafe);
           }
           if (cols.has("thiet_bi")) {
             insertCols.push("thiet_bi");
             insertVals.push("@Tb");
             reqSql.input("Tb", sql.NVarChar(500), thietBi);
+          }
+          if (cols.has("nguoi_dung_id") && Number.isFinite(viewerNguoiDungId) && viewerNguoiDungId > 0) {
+            insertCols.push("nguoi_dung_id");
+            insertVals.push("@NguoiDungId");
+            reqSql.input("NguoiDungId", sql.Int, Math.trunc(viewerNguoiDungId));
           }
           if (cols.has("ngay_tao")) {
             insertCols.push("ngay_tao");
@@ -272,9 +320,10 @@ app.get("/api/videos/:id", async (req, res) => {
           }
         }
       }
-    } catch {
+    } catch (e) {
       // Không làm hỏng luồng xem video nếu insert nguoi_xem lỗi
-      // (ví dụ do schema không khớp hoặc bảng chưa tồn tại).
+      // (nhưng vẫn log để bạn biết vì sao không có dữ liệu).
+      console.warn("[viewer]", e?.message || String(e));
     }
 
     const result = await pool

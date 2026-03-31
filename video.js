@@ -161,7 +161,12 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
 
     try {
-        const resV = await apiFetch(`/api/videos/${encodeURIComponent(id)}`);
+        const u0 = loadCurrentUser();
+        const resV = await apiFetch(
+            `/api/videos/${encodeURIComponent(id)}${
+                u0?.nguoi_dung_id ? `?nguoi_dung_id=${encodeURIComponent(u0.nguoi_dung_id)}` : ""
+            }`
+        );
         const dataV = await parseJsonResponse(resV);
         if (!resV.ok || !dataV.ok) throw new Error(dataV.error || "Không tải được video.");
         const v = dataV.video;

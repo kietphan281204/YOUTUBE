@@ -286,6 +286,8 @@ app.get("/api/videos/:id", async (req, res) => {
 
       const hasDiaChiIp = cols.has("dia_chi_ip");
       const hasThietBi = cols.has("thiet_bi");
+      const hasNguoiDungIdCol = cols.has("nguoi_dung_id");
+      const hasTenNguoiXemCol = cols.has("ten_nguoi_xem");
 
       // Nếu schema không có đủ cột để định danh, chỉ bỏ qua ghi nhận.
       if (hasDiaChiIp && hasThietBi) {
@@ -345,6 +347,14 @@ app.get("/api/videos/:id", async (req, res) => {
             insertVals.push("@NguoiDungId");
             reqSql.input("NguoiDungId", sql.Int, Math.trunc(viewerNguoiDungId));
           }
+
+          if (hasNguoiDungIdCol && (!Number.isFinite(viewerNguoiDungId) || viewerNguoiDungId <= 0)) {
+            console.warn("[viewer] nguoi_xem has nguoi_dung_id but viewerNguoiDungId not set", {
+              nguoi_dung_id: viewerNguoiDungId,
+              ipClamped,
+              thietBiLen: String(thietBi || "").length,
+            });
+          }
           if (cols.has("ngay_tao")) {
             insertCols.push("ngay_tao");
             insertVals.push("GETDATE()");
@@ -366,7 +376,22 @@ app.get("/api/videos/:id", async (req, res) => {
                 )})`
               );
           }
+
+          if (insertCols.length < 2) {
+            console.warn("[viewer] skip insert because insertCols empty", {
+              hasTenNguoiXemCol,
+              hasNguoiDungIdCol,
+              insertCols,
+            });
+          }
         }
+      }
+      else {
+        console.warn("[viewer] missing dia_chi_ip/thiet_bi columns, skip upsert", {
+          hasDiaChiIp,
+          hasThietBi,
+          columns: Array.from(cols || []),
+        });
       }
     } catch (e) {
       // Không làm hỏng luồng xem video nếu insert nguoi_xem lỗi

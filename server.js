@@ -775,6 +775,13 @@ app.post("/api/videos", upload.single("video"), async (req, res) => {
         : req.body?.title != null
           ? String(req.body.title).trim().slice(0, 255)
           : "";
+    const descriptionRaw =
+      typeof req.body?.mo_ta === "string"
+        ? req.body.mo_ta.trim()
+        : req.body?.mo_ta != null
+          ? String(req.body.mo_ta).trim()
+          : "";
+    const description = descriptionRaw.length ? descriptionRaw.slice(0, 4000) : null;
     const rawDuration = Number(req.body?.thoi_luong);
     const clientDuration =
       Number.isFinite(rawDuration) && rawDuration >= 0 ? Math.trunc(rawDuration) : 0;
@@ -819,13 +826,14 @@ app.post("/api/videos", upload.single("video"), async (req, res) => {
       .request()
       .input("NguoiDungId", sql.Int, Math.trunc(ownerId))
       .input("Title", sql.NVarChar(255), title)
+      .input("Description", sql.NVarChar(sql.MAX), description)
       .input("Duration", sql.Int, durationSeconds)
       .input("Path", sql.NVarChar(500), relativeUrl)
       .query(
         // Khớp Design VIDEO1.dbo.video: mo_ta/danh_muc_id/tag_id nullable; luot_xem bigint NOT NULL
         "INSERT INTO dbo.video (nguoi_dung_id, tieu_de, mo_ta, duong_dan_video, duong_dan_anh_bia, thoi_luong, luot_xem, ngay_tao, ngay_cap_nhat, danh_muc_id, tag_id) " +
           "OUTPUT INSERTED.video_id AS Id, INSERTED.tieu_de AS Title, INSERTED.duong_dan_video AS RelativeUrl, INSERTED.ngay_tao AS UploadedAt " +
-          "VALUES (@NguoiDungId, @Title, NULL, @Path, @Path, @Duration, CAST(0 AS BIGINT), GETDATE(), GETDATE(), NULL, NULL)"
+          "VALUES (@NguoiDungId, @Title, @Description, @Path, @Path, @Duration, CAST(0 AS BIGINT), GETDATE(), GETDATE(), NULL, NULL)"
       );
 
     res.json({ ok: true, video: insert.recordset[0] });

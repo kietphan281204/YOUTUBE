@@ -195,6 +195,7 @@ async function uploadVideo() {
     const input = document.getElementById("videoInput");
     const container = document.getElementById("videoContainer");
     const titleInput = document.getElementById("titleInput");
+    const descriptionInput = document.getElementById("descriptionInput");
 
     if (input.files.length === 0) {
         alert("Vui lòng chọn video!");
@@ -208,6 +209,7 @@ async function uploadVideo() {
         const durationSeconds = await getVideoDurationSeconds(file);
         const form = new FormData();
         form.append("title", titleInput?.value || "");
+        form.append("mo_ta", descriptionInput?.value || "");
         form.append("thoi_luong", String(durationSeconds));
         if (Number.isFinite(Number(currentUser?.nguoi_dung_id))) {
             form.append("nguoi_dung_id", String(currentUser.nguoi_dung_id));
@@ -223,6 +225,7 @@ async function uploadVideo() {
 
         input.value = "";
         if (titleInput) titleInput.value = "";
+        if (descriptionInput) descriptionInput.value = "";
         setStatus("Đăng video thành công (đã lưu SQL).", false);
     } catch (e) {
         setStatus(`Đăng video thất bại: ${e.message}`, true);

@@ -12,6 +12,10 @@ const { sqlConfig } = require("./sql.config");
 
 const app = express();
 
+// Sau ngrok, client IP thường nằm trong `x-forwarded-for`.
+// bật trust proxy để `req.ip` có ý nghĩa hơn.
+app.set("trust proxy", true);
+
 // CORS: GitHub Pages → ngrok cần preflight; không giới hạn allowedHeaders quá hẹp
 // (trình duyệt có thể gửi thêm header → nếu thiếu sẽ báo Failed to fetch).
 app.use(
@@ -68,6 +72,21 @@ function mapNguoiDungRow(row) {
     ten_dang_nhap: row?.ten_dang_nhap,
     email: row?.email,
   };
+}
+
+let nguoiXemColumnsCache = null;
+async function getNguoiXemColumns(pool) {
+  if (nguoiXemColumnsCache) return nguoiXemColumnsCache;
+  const result = await pool
+    .request()
+    .query(`
+      SELECT c.name AS column_name
+      FROM sys.columns c
+      WHERE c.object_id = OBJECT_ID(N'dbo.nguoi_xem')
+      ORDER BY c.column_id
+    `);
+  nguoiXemColumnsCache = new Set((result.recordset || []).map((r) => r.column_name));
+  return nguoiXemColumnsCache;
 }
 
 app.post("/api/auth/register", async (req, res) => {
@@ -164,6 +183,100 @@ app.get("/api/videos/:id", async (req, res) => {
       return res.status(400).json({ ok: false, error: "ID video không hợp lệ." });
     }
     const pool = await sql.connect(sqlConfig);
+
+    // Ghi nhận người xem (dbo.nguoi_xem) khi mở trang chi tiết.
+    // Logic upsert theo: dia_chi_ip + thiet_bi (nếu 2 cột này tồn tại).
+    try {
+      const cols = await getNguoiXemColumns(pool);
+
+      const xff = String(req.headers["x-forwarded-for"] || "");
+      // x-forwarded-for có thể dạng "client, proxy1, proxy2"
+      const ip = (xff.split(",")[0] || req.ip || "").trim();
+      const thietBi = String(req.headers["user-agent"] || "").slice(0, 500);
+
+      const viewerHash = crypto
+        .createHash("sha256")
+        .update(`${ip}|${thietBi}`)
+        .digest("hex")
+        .slice(0, 12);
+      const tenNguoiXem = `viewer_${viewerHash}`;
+
+      const hasDiaChiIp = cols.has("dia_chi_ip");
+      const hasThietBi = cols.has("thiet_bi");
+
+      // Nếu schema không có đủ cột để định danh, chỉ bỏ qua ghi nhận.
+      if (hasDiaChiIp && hasThietBi) {
+        const existing = await pool
+          .request()
+          .input("Ip", sql.NVarChar(100), ip)
+          .input("Tb", sql.NVarChar(500), thietBi)
+          .query(
+            "SELECT TOP (1) nguoi_xem_id AS Id FROM dbo.nguoi_xem WHERE dia_chi_ip = @Ip AND thiet_bi = @Tb"
+          );
+
+        const existedRow = existing.recordset?.[0];
+        if (existedRow?.Id) {
+          // cập nhật mốc thời gian nếu schema có sẵn
+          if (cols.has("ngay_truy_cap")) {
+            await pool
+              .request()
+              .input("Id", sql.Int, existedRow.Id)
+              .query("UPDATE dbo.nguoi_xem SET ngay_truy_cap = GETDATE() WHERE nguoi_xem_id = @Id");
+          } else if (cols.has("ngay_cap_nhat")) {
+            await pool
+              .request()
+              .input("Id", sql.Int, existedRow.Id)
+              .query("UPDATE dbo.nguoi_xem SET ngay_cap_nhat = GETDATE() WHERE nguoi_xem_id = @Id");
+          }
+        } else {
+          // build insert theo cột tồn tại để tránh lỗi do schema khác
+          const insertCols = [];
+          const insertVals = [];
+          const reqSql = pool.request();
+
+          if (cols.has("ten_nguoi_xem")) {
+            insertCols.push("ten_nguoi_xem");
+            insertVals.push("@TenNguoiXem");
+            reqSql.input("TenNguoiXem", sql.NVarChar(255), tenNguoiXem);
+          }
+          if (cols.has("dia_chi_ip")) {
+            insertCols.push("dia_chi_ip");
+            insertVals.push("@Ip");
+            reqSql.input("Ip", sql.NVarChar(100), ip);
+          }
+          if (cols.has("thiet_bi")) {
+            insertCols.push("thiet_bi");
+            insertVals.push("@Tb");
+            reqSql.input("Tb", sql.NVarChar(500), thietBi);
+          }
+          if (cols.has("ngay_tao")) {
+            insertCols.push("ngay_tao");
+            insertVals.push("GETDATE()");
+          }
+          if (cols.has("ngay_truy_cap")) {
+            insertCols.push("ngay_truy_cap");
+            insertVals.push("GETDATE()");
+          }
+          if (cols.has("ngay_cap_nhat")) {
+            insertCols.push("ngay_cap_nhat");
+            insertVals.push("GETDATE()");
+          }
+
+          if (insertCols.length >= 2) {
+            await reqSql
+              .query(
+                `INSERT INTO dbo.nguoi_xem (${insertCols.join(",")}) VALUES (${insertVals.join(
+                  ","
+                )})`
+              );
+          }
+        }
+      }
+    } catch {
+      // Không làm hỏng luồng xem video nếu insert nguoi_xem lỗi
+      // (ví dụ do schema không khớp hoặc bảng chưa tồn tại).
+    }
+
     const result = await pool
       .request()
       .input("Id", sql.Int, Math.trunc(id))

@@ -837,6 +837,17 @@ app.post("/api/videos", upload.single("video"), async (req, res) => {
           "VALUES (@NguoiDungId, @Title, @Description, @Path, @Path, @Duration, CAST(0 AS BIGINT), GETDATE(), GETDATE(), NULL, NULL)"
       );
 
+    // Một số schema/trigger cũ có thể làm mo_ta về NULL khi INSERT.
+    // Cập nhật lại chắc chắn ngay sau khi tạo video.
+    const newId = Number(insert.recordset?.[0]?.Id);
+    if (Number.isFinite(newId) && newId > 0 && description.length > 0) {
+      await pool
+        .request()
+        .input("Id", sql.Int, Math.trunc(newId))
+        .input("Description", sql.NVarChar(sql.MAX), description)
+        .query("UPDATE dbo.video SET mo_ta = @Description WHERE video_id = @Id");
+    }
+
     res.json({ ok: true, video: insert.recordset[0] });
   } catch (err) {
     res.status(500).json({ ok: false, error: err?.message || String(err) });

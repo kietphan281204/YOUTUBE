@@ -168,8 +168,14 @@ app.get("/api/videos/:id", async (req, res) => {
       .request()
       .input("Id", sql.Int, Math.trunc(id))
       .query(
-        "SELECT video_id AS Id, tieu_de AS Title, duong_dan_video AS RelativeUrl, luot_xem AS LuotXem, ngay_tao AS UploadedAt " +
-          "FROM dbo.video WHERE video_id = @Id"
+        // Mỗi lần mở trang chi tiết => tăng lượt xem +1
+        "UPDATE dbo.video SET luot_xem = luot_xem + 1 " +
+          "OUTPUT INSERTED.video_id AS Id, " +
+          "INSERTED.tieu_de AS Title, " +
+          "INSERTED.duong_dan_video AS RelativeUrl, " +
+          "INSERTED.luot_xem AS LuotXem, " +
+          "INSERTED.ngay_tao AS UploadedAt " +
+          "WHERE video_id = @Id"
       );
     const row = result.recordset?.[0];
     if (!row) return res.status(404).json({ ok: false, error: "Không tìm thấy video." });

@@ -89,6 +89,45 @@ async function getNguoiXemColumns(pool) {
   return nguoiXemColumnsCache;
 }
 
+let nguoiXemMetaCache = null;
+async function getNguoiXemMeta(pool) {
+  if (nguoiXemMetaCache) return nguoiXemMetaCache;
+  const result = await pool
+    .request()
+    .query(`
+      SELECT
+        c.name AS column_name,
+        TYPE_NAME(c.user_type_id) AS data_type,
+        c.max_length
+      FROM sys.columns c
+      WHERE c.object_id = OBJECT_ID(N'dbo.nguoi_xem')
+      ORDER BY c.column_id
+    `);
+
+  const meta = {};
+  for (const row of result.recordset || []) {
+    const max_length = Number(row.max_length);
+    const type = String(row.data_type || "").toLowerCase();
+    let maxChars = Infinity;
+    if (Number.isFinite(max_length) && max_length >= 0) {
+      // NVARCHAR/NCHAR: max_length tính theo byte
+      if (type.includes("nvarchar") || type.includes("nchar")) maxChars = Math.floor(max_length / 2);
+      else maxChars = max_length;
+    }
+    meta[row.column_name] = { maxChars };
+  }
+
+  nguoiXemMetaCache = meta;
+  return nguoiXemMetaCache;
+}
+
+function safeSlice(str, maxChars) {
+  const s = String(str ?? "");
+  if (!Number.isFinite(maxChars) || maxChars === Infinity) return s;
+  if (maxChars <= 0) return "";
+  return s.slice(0, maxChars);
+}
+
 app.post("/api/auth/register", async (req, res) => {
   try {
     const tenDangNhap = String(req.body?.ten_dang_nhap || "").trim().slice(0, 255);
@@ -188,11 +227,12 @@ app.get("/api/videos/:id", async (req, res) => {
     // Logic upsert theo: dia_chi_ip + thiet_bi (nếu 2 cột này tồn tại).
     try {
       const cols = await getNguoiXemColumns(pool);
+      const meta = await getNguoiXemMeta(pool);
 
       const xff = String(req.headers["x-forwarded-for"] || "");
       // x-forwarded-for có thể dạng "client, proxy1, proxy2"
       const ip = (xff.split(",")[0] || req.ip || "").trim();
-      const thietBi = String(req.headers["user-agent"] || "").slice(0, 500);
+      const thietBiRaw = String(req.headers["user-agent"] || "");
 
       const viewerHash = crypto
         .createHash("sha256")
@@ -249,9 +289,17 @@ app.get("/api/videos/:id", async (req, res) => {
 
       // Nếu schema không có đủ cột để định danh, chỉ bỏ qua ghi nhận.
       if (hasDiaChiIp && hasThietBi) {
+        const ipMax = meta?.dia_chi_ip?.maxChars ?? Infinity;
+        const tbMax = meta?.thiet_bi?.maxChars ?? Infinity;
+        const nameMax = meta?.ten_nguoi_xem?.maxChars ?? Infinity;
+
+        const ipClamped = safeSlice(ipSafe, ipMax);
+        const thietBi = safeSlice(thietBiRaw, tbMax);
+        tenNguoiXem = safeSlice(tenNguoiXem, nameMax);
+
         const existing = await pool
           .request()
-          .input("Ip", sql.NVarChar(100), ipSafe)
+          .input("Ip", sql.NVarChar(255), ipClamped)
           .input("Tb", sql.NVarChar(500), thietBi)
           .query(
             "SELECT TOP (1) nguoi_xem_id AS Id FROM dbo.nguoi_xem WHERE dia_chi_ip = @Ip AND thiet_bi = @Tb"
@@ -323,7 +371,9 @@ app.get("/api/videos/:id", async (req, res) => {
     } catch (e) {
       // Không làm hỏng luồng xem video nếu insert nguoi_xem lỗi
       // (nhưng vẫn log để bạn biết vì sao không có dữ liệu).
-      console.warn("[viewer]", e?.message || String(e));
+      console.warn("[viewer]", {
+        message: e?.message || String(e),
+      });
     }
 
     const result = await pool

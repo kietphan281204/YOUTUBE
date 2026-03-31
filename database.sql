@@ -30,3 +30,18 @@ BEGIN
   VALUES (N'demo_upload', N'demo@local.test', N'demo_sha256_placeholder', NULL, GETDATE(), GETDATE());
 END
 GO
+
+-- Bảng bình luận (liên kết video + người dùng). Chạy 1 lần trong SSMS nếu chưa có bảng.
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'dbo.binh_luan') AND type in (N'U'))
+BEGIN
+  CREATE TABLE dbo.binh_luan (
+    binh_luan_id INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+    video_id INT NOT NULL,
+    nguoi_dung_id INT NOT NULL,
+    noi_dung NVARCHAR(1000) NOT NULL,
+    ngay_tao DATETIME NOT NULL DEFAULT GETDATE(),
+    CONSTRAINT FK_binh_luan_video FOREIGN KEY (video_id) REFERENCES dbo.video(video_id),
+    CONSTRAINT FK_binh_luan_nguoi_dung FOREIGN KEY (nguoi_dung_id) REFERENCES dbo.nguoi_dung(nguoi_dung_id)
+  );
+END
+GO

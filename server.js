@@ -157,6 +157,112 @@ app.get("/api/videos", async (_req, res) => {
   }
 });
 
+app.get("/api/videos/:id", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id) || id <= 0) {
+      return res.status(400).json({ ok: false, error: "ID video không hợp lệ." });
+    }
+    const pool = await sql.connect(sqlConfig);
+    const result = await pool
+      .request()
+      .input("Id", sql.Int, Math.trunc(id))
+      .query(
+        "SELECT video_id AS Id, tieu_de AS Title, duong_dan_video AS RelativeUrl, ngay_tao AS UploadedAt " +
+          "FROM dbo.video WHERE video_id = @Id"
+      );
+    const row = result.recordset?.[0];
+    if (!row) return res.status(404).json({ ok: false, error: "Không tìm thấy video." });
+    res.json({ ok: true, video: row });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err?.message || String(err) });
+  }
+});
+
+app.get("/api/videos/:id/comments", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id) || id <= 0) {
+      return res.status(400).json({ ok: false, error: "ID video không hợp lệ." });
+    }
+    const pool = await sql.connect(sqlConfig);
+    const result = await pool
+      .request()
+      .input("VideoId", sql.Int, Math.trunc(id))
+      .query(
+        "SELECT b.binh_luan_id AS Id, b.video_id AS VideoId, b.nguoi_dung_id AS NguoiDungId, " +
+          "b.noi_dung AS NoiDung, b.ngay_tao AS NgayTao, n.ten_dang_nhap AS TenDangNhap " +
+          "FROM dbo.binh_luan b " +
+          "LEFT JOIN dbo.nguoi_dung n ON n.nguoi_dung_id = b.nguoi_dung_id " +
+          "WHERE b.video_id = @VideoId " +
+          "ORDER BY b.ngay_tao DESC"
+      );
+    res.json({ ok: true, comments: result.recordset || [] });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err?.message || String(err) });
+  }
+});
+
+app.post("/api/videos/:id/comments", async (req, res) => {
+  try {
+    const videoId = Number(req.params.id);
+    if (!Number.isFinite(videoId) || videoId <= 0) {
+      return res.status(400).json({ ok: false, error: "ID video không hợp lệ." });
+    }
+    const noiDung = String(req.body?.noi_dung ?? "").trim().slice(0, 1000);
+    if (!noiDung) {
+      return res.status(400).json({ ok: false, error: "Nội dung bình luận không được để trống." });
+    }
+    const bodyUserId = Number(req.body?.nguoi_dung_id);
+    if (!Number.isFinite(bodyUserId) || bodyUserId <= 0) {
+      return res.status(401).json({ ok: false, error: "Cần đăng nhập để bình luận (thiếu nguoi_dung_id)." });
+    }
+
+    const pool = await sql.connect(sqlConfig);
+    const exists = await pool
+      .request()
+      .input("Vid", sql.Int, Math.trunc(videoId))
+      .query("SELECT 1 AS ok FROM dbo.video WHERE video_id = @Vid");
+    if (!exists.recordset?.length) {
+      return res.status(404).json({ ok: false, error: "Không tìm thấy video." });
+    }
+
+    const userOk = await pool
+      .request()
+      .input("Uid", sql.Int, Math.trunc(bodyUserId))
+      .query("SELECT 1 AS ok FROM dbo.nguoi_dung WHERE nguoi_dung_id = @Uid");
+    if (!userOk.recordset?.length) {
+      return res.status(400).json({ ok: false, error: "Người dùng không tồn tại." });
+    }
+
+    const inserted = await pool
+      .request()
+      .input("VideoId", sql.Int, Math.trunc(videoId))
+      .input("NguoiDungId", sql.Int, Math.trunc(bodyUserId))
+      .input("NoiDung", sql.NVarChar(1000), noiDung)
+      .query(
+        "INSERT INTO dbo.binh_luan (video_id, nguoi_dung_id, noi_dung, ngay_tao) " +
+          "OUTPUT INSERTED.binh_luan_id AS Id, INSERTED.video_id AS VideoId, INSERTED.nguoi_dung_id AS NguoiDungId, " +
+          "INSERTED.noi_dung AS NoiDung, INSERTED.ngay_tao AS NgayTao " +
+          "VALUES (@VideoId, @NguoiDungId, @NoiDung, GETDATE())"
+      );
+
+    const row = inserted.recordset?.[0];
+    const name = await pool
+      .request()
+      .input("Uid", sql.Int, Math.trunc(bodyUserId))
+      .query("SELECT ten_dang_nhap AS TenDangNhap FROM dbo.nguoi_dung WHERE nguoi_dung_id = @Uid");
+    const ten = name.recordset?.[0]?.TenDangNhap ?? null;
+
+    res.json({
+      ok: true,
+      comment: row ? { ...row, TenDangNhap: ten } : null,
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err?.message || String(err) });
+  }
+});
+
 // Quick diagnostics: confirms which DB settings server is using (no password leaked)
 app.get("/api/diag", (_req, res) => {
   res.json({

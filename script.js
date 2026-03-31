@@ -84,6 +84,8 @@ function updateUploadAccess() {
 function renderVideoCard(v) {
     const card = document.createElement("div");
     card.className = "videoCard";
+    card.style.cursor = "pointer";
+    card.title = "Xem chi tiết và bình luận";
 
     const title = document.createElement("div");
     title.className = "videoTitle";
@@ -94,10 +96,16 @@ function renderVideoCard(v) {
     // so we must prefix it with API_BASE.
     video.src = apiUrl(v.RelativeUrl);
     video.controls = true;
+    video.addEventListener("click", (e) => e.stopPropagation());
 
     const meta = document.createElement("div");
     meta.className = "videoMeta";
     meta.textContent = v.UploadedAt ? new Date(v.UploadedAt).toLocaleString() : "";
+
+    const id = v.Id ?? v.id;
+    card.addEventListener("click", () => {
+        if (id != null) window.location.href = `video.html?id=${encodeURIComponent(String(id))}`;
+    });
 
     card.appendChild(title);
     card.appendChild(video);

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Chi tiết video</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>Website Video</h1>
+        <div class="headerActions">
+            <button type="button" id="backBtn">← Trang chủ</button>
+            <button type="button" id="loginPageBtn">Đăng nhập</button>
+        </div>
+    </header>
+
+    <main class="videoDetailMain">
+        <div id="detailStatus"></div>
+
+        <article id="videoDetail">
+            <h2 id="detailTitle">Đang tải…</h2>
+            <video id="detailVideo" controls playsinline></video>
+            <p id="detailMeta" class="videoMeta"></p>
+        </article>
+
+        <section class="commentsSection">
+            <h3>Bình luận</h3>
+            <div id="commentList" class="commentList"></div>
+            <div id="commentFormWrap" class="commentFormWrap">
+                <textarea id="commentInput" rows="3" placeholder="Viết bình luận…" maxlength="1000"></textarea>
+                <button type="button" id="sendCommentBtn">Gửi bình luận</button>
+            </div>
+            <p id="commentHint" class="commentHint"></p>
+        </section>
+    </main>
+
+    <script src="config.js"></script>
+    <script src="video.js"></script>
+</body>
+</html>

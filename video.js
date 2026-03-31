@@ -1,0 +1,160 @@
+const API_BASE = typeof window.API_BASE === "string" ? window.API_BASE.replace(/\/+$/, "") : "";
+const AUTH_STORAGE_KEY = "current_user";
+
+function apiUrl(path) {
+    const p = String(path || "");
+    if (!p.startsWith("/")) return API_BASE ? `${API_BASE}/${p}` : p;
+    return API_BASE ? `${API_BASE}${p}` : p;
+}
+
+function apiFetch(path, init = {}) {
+    const headers = new Headers(init.headers || {});
+    headers.set("ngrok-skip-browser-warning", "1");
+    return fetch(apiUrl(path), { ...init, headers });
+}
+
+function loadCurrentUser() {
+    try {
+        const raw = localStorage.getItem(AUTH_STORAGE_KEY);
+        if (!raw) return null;
+        return JSON.parse(raw);
+    } catch {
+        return null;
+    }
+}
+
+function setDetailStatus(msg, isError = false) {
+    const el = document.getElementById("detailStatus");
+    if (!el) return;
+    el.textContent = msg || "";
+    el.style.color = isError ? "#b00020" : "#1b5e20";
+}
+
+function setCommentHint(msg, isError = false) {
+    const el = document.getElementById("commentHint");
+    if (!el) return;
+    el.textContent = msg || "";
+    el.style.color = isError ? "#b00020" : "#555";
+}
+
+async function parseJsonResponse(res) {
+    const text = await res.text();
+    if (!text) return { ok: false, error: `Empty response (HTTP ${res.status})` };
+    try {
+        return JSON.parse(text);
+    } catch {
+        return {
+            ok: false,
+            error: `Server trả về không phải JSON (HTTP ${res.status}): ${String(text).slice(0, 200)}`,
+        };
+    }
+}
+
+function renderComments(comments) {
+    const list = document.getElementById("commentList");
+    if (!list) return;
+    list.innerHTML = "";
+    if (!comments?.length) {
+        list.innerHTML = "<p class=\"commentEmpty\">Chưa có bình luận.</p>";
+        return;
+    }
+    for (const c of comments) {
+        const row = document.createElement("div");
+        row.className = "commentItem";
+        const who = c.TenDangNhap || `User #${c.NguoiDungId ?? ""}`;
+        const when = c.NgayTao ? new Date(c.NgayTao).toLocaleString() : "";
+        row.innerHTML =
+            `<div class="commentHead"><strong>${escapeHtml(who)}</strong>` +
+            `<span class="commentTime">${escapeHtml(when)}</span></div>` +
+            `<div class="commentBody">${escapeHtml(c.NoiDung || "")}</div>`;
+        list.appendChild(row);
+    }
+}
+
+function escapeHtml(s) {
+    const d = document.createElement("div");
+    d.textContent = s;
+    return d.innerHTML;
+}
+
+window.addEventListener("DOMContentLoaded", async () => {
+    const params = new URLSearchParams(location.search);
+    const id = params.get("id");
+    if (!id) {
+        setDetailStatus("Thiếu tham số id trên URL.", true);
+        return;
+    }
+
+    document.getElementById("backBtn")?.addEventListener("click", () => {
+        window.location.href = "index.html";
+    });
+    document.getElementById("loginPageBtn")?.addEventListener("click", () => {
+        window.location.href = "login.html";
+    });
+
+    const user = loadCurrentUser();
+    const formWrap = document.getElementById("commentFormWrap");
+    if (!user?.nguoi_dung_id) {
+        if (formWrap) formWrap.style.display = "none";
+        setCommentHint("Đăng nhập để gửi bình luận.", true);
+    }
+
+    try {
+        const resV = await apiFetch(`/api/videos/${encodeURIComponent(id)}`);
+        const dataV = await parseJsonResponse(resV);
+        if (!resV.ok || !dataV.ok) throw new Error(dataV.error || "Không tải được video.");
+        const v = dataV.video;
+        document.getElementById("detailTitle").textContent = v.Title || "Video";
+        const vid = document.getElementById("detailVideo");
+        vid.src = apiUrl(v.RelativeUrl);
+        document.getElementById("detailMeta").textContent = v.UploadedAt
+            ? `Đăng: ${new Date(v.UploadedAt).toLocaleString()}`
+            : "";
+        setDetailStatus("", false);
+    } catch (e) {
+        setDetailStatus(e.message || String(e), true);
+        return;
+    }
+
+    async function loadComments() {
+        try {
+            const res = await apiFetch(`/api/videos/${encodeURIComponent(id)}/comments`);
+            const data = await parseJsonResponse(res);
+            if (!res.ok || !data.ok) throw new Error(data.error || "Không tải bình luận.");
+            renderComments(data.comments);
+        } catch (e) {
+            setCommentHint(`Không tải bình luận: ${e.message}`, true);
+        }
+    }
+
+    await loadComments();
+
+    document.getElementById("sendCommentBtn")?.addEventListener("click", async () => {
+        const u = loadCurrentUser();
+        if (!u?.nguoi_dung_id) {
+            setCommentHint("Bạn cần đăng nhập.", true);
+            return;
+        }
+        const input = document.getElementById("commentInput");
+        const noiDung = (input?.value || "").trim();
+        if (!noiDung) {
+            setCommentHint("Nhập nội dung bình luận.", true);
+            return;
+        }
+        setCommentHint("Đang gửi…", false);
+        try {
+            const res = await apiFetch(`/api/videos/${encodeURIComponent(id)}/comments`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ noi_dung: noiDung, nguoi_dung_id: u.nguoi_dung_id }),
+            });
+            const data = await parseJsonResponse(res);
+            if (!res.ok || !data.ok) throw new Error(data.error || "Gửi thất bại");
+            if (input) input.value = "";
+            setCommentHint("Đã gửi bình luận.", false);
+            await loadComments();
+        } catch (e) {
+            setCommentHint(e.message || String(e), true);
+        }
+    });
+});

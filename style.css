@@ -103,3 +103,81 @@ main {
     border-radius: 8px;
     display: block;
 }
+
+.videoDetailMain {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+#detailVideo {
+    width: 100%;
+    max-height: 70vh;
+    border-radius: 10px;
+    background: #000;
+    display: block;
+    margin-top: 10px;
+}
+
+.commentsSection {
+    margin-top: 28px;
+    padding-top: 20px;
+    border-top: 1px solid #ddd;
+}
+
+.commentList {
+    margin: 12px 0 16px;
+}
+
+.commentItem {
+    background: #fff;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
+}
+
+.commentHead {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 6px;
+    font-size: 14px;
+}
+
+.commentTime {
+    font-size: 12px;
+    color: #777;
+}
+
+.commentBody {
+    font-size: 14px;
+    line-height: 1.45;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.commentEmpty {
+    color: #666;
+    font-size: 14px;
+}
+
+.commentFormWrap {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-width: 100%;
+}
+
+.commentFormWrap textarea {
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    font-family: inherit;
+    resize: vertical;
+}
+
+.commentHint {
+    font-size: 13px;
+    margin-top: 8px;
+}

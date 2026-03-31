@@ -204,6 +204,22 @@ async function backfillVideoDurations() {
   }
 }
 
+async function backfillVideoDescriptions() {
+  try {
+    const pool = await sql.connect(sqlConfig);
+    const updated = await pool.request().query(
+      "UPDATE dbo.video " +
+        "SET mo_ta = LEFT(COALESCE(NULLIF(tieu_de, N''), N'Video không có mô tả'), 4000) " +
+        "WHERE mo_ta IS NULL OR LTRIM(RTRIM(mo_ta)) = N''"
+    );
+    // eslint-disable-next-line no-console
+    console.log(`[description] backfill done: ${Number(updated.rowsAffected?.[0] || 0)} rows.`);
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn("[description] backfill failed:", e?.message || e);
+  }
+}
+
 app.post("/api/auth/register", async (req, res) => {
   try {
     const tenDangNhap = String(req.body?.ten_dang_nhap || "").trim().slice(0, 255);
@@ -856,6 +872,26 @@ app.post("/api/videos", upload.single("video"), async (req, res) => {
         .query("UPDATE dbo.video SET mo_ta = COALESCE(NULLIF(mo_ta, N''), tieu_de) WHERE video_id = @Id");
     }
 
+    // Đọc lại row vừa insert và ép thêm 1 lần nếu còn null/rỗng.
+    if (Number.isFinite(newId) && newId > 0) {
+      const check = await pool
+        .request()
+        .input("Id", sql.Int, Math.trunc(newId))
+        .query(
+          "SELECT TOP (1) tieu_de AS Title, mo_ta AS Description FROM dbo.video WHERE video_id = @Id"
+        );
+      const afterInsert = check.recordset?.[0];
+      const savedDesc = String(afterInsert?.Description ?? "").trim();
+      const savedTitle = String(afterInsert?.Title ?? "").trim().slice(0, 4000);
+      if (!savedDesc && savedTitle) {
+        await pool
+          .request()
+          .input("Id", sql.Int, Math.trunc(newId))
+          .input("FallbackDescription", sql.NVarChar(sql.MAX), savedTitle)
+          .query("UPDATE dbo.video SET mo_ta = @FallbackDescription WHERE video_id = @Id");
+      }
+    }
+
     res.json({ ok: true, video: insert.recordset[0] });
   } catch (err) {
     res.status(500).json({ ok: false, error: err?.message || String(err) });
@@ -915,6 +951,7 @@ async function ensureDemoNguoiDung() {
 
 (async () => {
   await ensureDemoNguoiDung();
+  await backfillVideoDescriptions();
   await backfillVideoDurations();
 app.listen(port, () => {
   // eslint-disable-next-line no-console

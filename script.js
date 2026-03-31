@@ -170,10 +170,15 @@ function getVideoDurationSeconds(file) {
             el.preload = "metadata";
             el.src = objectUrl;
             el.onloadedmetadata = () => finish(el.duration);
+            el.ondurationchange = () => {
+                if (Number.isFinite(el.duration) && el.duration > 0) {
+                    finish(el.duration);
+                }
+            };
             el.onerror = () => finish(0);
 
             // Safety timeout in case browser never fires metadata events.
-            setTimeout(() => finish(0), 5000);
+            setTimeout(() => finish(0), 15000);
         } catch {
             resolve(0);
         }

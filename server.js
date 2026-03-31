@@ -538,10 +538,12 @@ app.get("/api/videos/:id", async (req, res) => {
       .input("Id", sql.Int, Math.trunc(id))
       .query(
         // Mỗi lần mở trang chi tiết => tăng lượt xem +1
-        "UPDATE dbo.video SET luot_xem = luot_xem + 1 " +
+        "UPDATE dbo.video " +
+          "SET luot_xem = luot_xem + 1, " +
+          "mo_ta = COALESCE(NULLIF(mo_ta, N''), tieu_de) " +
           "OUTPUT INSERTED.video_id AS Id, " +
           "INSERTED.tieu_de AS Title, " +
-          "INSERTED.mo_ta AS Description, " +
+          "COALESCE(NULLIF(INSERTED.mo_ta, N''), INSERTED.tieu_de) AS Description, " +
           "INSERTED.duong_dan_video AS RelativeUrl, " +
           "INSERTED.luot_xem AS LuotXem, " +
           "INSERTED.ngay_tao AS UploadedAt " +

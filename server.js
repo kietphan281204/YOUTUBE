@@ -775,7 +775,7 @@ app.post("/api/videos", upload.single("video"), async (req, res) => {
         : req.body?.title != null
           ? String(req.body.title).trim().slice(0, 255)
           : "";
-    const descriptionSource = req.body?.mo_ta ?? req.body?.description ?? "";
+    const descriptionSource = req.body?.mo_ta ?? req.body?.description ?? req.body?.title ?? "";
     const descriptionRaw =
       typeof descriptionSource === "string"
         ? descriptionSource.trim()
@@ -908,9 +908,9 @@ async function ensureDemoNguoiDung() {
 (async () => {
   await ensureDemoNguoiDung();
   await backfillVideoDurations();
-  app.listen(port, () => {
-    // eslint-disable-next-line no-console
-    console.log(`Server running at http://localhost:${port}`);
-  });
+app.listen(port, () => {
+  // eslint-disable-next-line no-console
+  console.log(`Server running at http://localhost:${port}`);
+});
 })();
 

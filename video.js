@@ -37,6 +37,18 @@ function setCommentHint(msg, isError = false) {
     el.style.color = isError ? "#b00020" : "#555";
 }
 
+function explainApiFailure(status, text) {
+    const t = String(text || "");
+    if (status === 404 && t.includes("Cannot GET")) {
+        return (
+            "API không có route này (404). Thường do backend chưa chạy bản mới có GET /api/videos/:id. " +
+            "Làm: git pull trong thư mục project → npm.cmd run dev → ngrok http 8080 → cập nhật window.API_BASE trong config.js " +
+            "trùng URL ngrok hiện tại → push. Giữ cả Node và ngrok đang mở khi dùng GitHub Pages."
+        );
+    }
+    return `Server trả về không phải JSON (HTTP ${status}): ${t.slice(0, 200)}`;
+}
+
 async function parseJsonResponse(res) {
     const text = await res.text();
     if (!text) return { ok: false, error: `Empty response (HTTP ${res.status})` };
@@ -45,7 +57,7 @@ async function parseJsonResponse(res) {
     } catch {
         return {
             ok: false,
-            error: `Server trả về không phải JSON (HTTP ${res.status}): ${String(text).slice(0, 200)}`,
+            error: explainApiFailure(res.status, text),
         };
     }
 }
@@ -78,6 +90,15 @@ function escapeHtml(s) {
 }
 
 window.addEventListener("DOMContentLoaded", async () => {
+    if (location.hostname.endsWith("github.io") && !API_BASE) {
+        setDetailStatus(
+            "Chưa cấu hình backend: mở config.js, đặt window.API_BASE = URL https ngrok (hoặc server API), commit và push.",
+            true
+        );
+        document.getElementById("detailTitle").textContent = "Lỗi cấu hình";
+        return;
+    }
+
     const params = new URLSearchParams(location.search);
     const id = params.get("id");
     if (!id) {

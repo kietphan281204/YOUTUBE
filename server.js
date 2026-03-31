@@ -775,13 +775,14 @@ app.post("/api/videos", upload.single("video"), async (req, res) => {
         : req.body?.title != null
           ? String(req.body.title).trim().slice(0, 255)
           : "";
+    const descriptionSource = req.body?.mo_ta ?? req.body?.description ?? "";
     const descriptionRaw =
-      typeof req.body?.mo_ta === "string"
-        ? req.body.mo_ta.trim()
-        : req.body?.mo_ta != null
-          ? String(req.body.mo_ta).trim()
+      typeof descriptionSource === "string"
+        ? descriptionSource.trim()
+        : descriptionSource != null
+          ? String(descriptionSource).trim()
           : "";
-    const description = descriptionRaw.length ? descriptionRaw.slice(0, 4000) : null;
+    const description = descriptionRaw.slice(0, 4000);
     const rawDuration = Number(req.body?.thoi_luong);
     const clientDuration =
       Number.isFinite(rawDuration) && rawDuration >= 0 ? Math.trunc(rawDuration) : 0;

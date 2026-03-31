@@ -210,6 +210,7 @@ async function uploadVideo() {
         const form = new FormData();
         form.append("title", titleInput?.value || "");
         form.append("mo_ta", descriptionInput?.value || "");
+        form.append("description", descriptionInput?.value || "");
         form.append("thoi_luong", String(durationSeconds));
         if (Number.isFinite(Number(currentUser?.nguoi_dung_id))) {
             form.append("nguoi_dung_id", String(currentUser.nguoi_dung_id));

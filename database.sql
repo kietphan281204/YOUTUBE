@@ -45,3 +45,18 @@ BEGIN
   );
 END
 GO
+
+-- Bảng lượt thích video
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'dbo.luot_thich') AND type in (N'U'))
+BEGIN
+  CREATE TABLE dbo.luot_thich (
+    luot_thich_id INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+    video_id INT NOT NULL,
+    nguoi_dung_id INT NOT NULL,
+    ngay_tao DATETIME NOT NULL DEFAULT GETDATE(),
+    CONSTRAINT UQ_luot_thich UNIQUE (video_id, nguoi_dung_id),
+    CONSTRAINT FK_luot_thich_video FOREIGN KEY (video_id) REFERENCES dbo.video(video_id),
+    CONSTRAINT FK_luot_thich_nguoi_dung FOREIGN KEY (nguoi_dung_id) REFERENCES dbo.nguoi_dung(nguoi_dung_id)
+  );
+END
+GO

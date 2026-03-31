@@ -89,6 +89,46 @@ function escapeHtml(s) {
     return d.innerHTML;
 }
 
+async function loadLikeState(videoId, user) {
+    const likeBtn = document.getElementById("likeBtn");
+    const likeCount = document.getElementById("likeCount");
+
+    if (likeBtn && !user?.nguoi_dung_id) {
+        likeBtn.disabled = true;
+        likeBtn.textContent = "Đăng nhập để like";
+    }
+    if (likeCount) likeCount.textContent = "0 lượt thích";
+
+    if (!videoId || !user?.nguoi_dung_id) return;
+
+    try {
+        const url =
+            `/api/videos/${encodeURIComponent(videoId)}/likes?nguoi_dung_id=${encodeURIComponent(
+                user.nguoi_dung_id
+            )}`;
+        const res = await apiFetch(url);
+        const data = await parseJsonResponse(res);
+        if (!res.ok || !data.ok) throw new Error(data.error || "Không tải lượt thích.");
+
+        if (likeCount) {
+            const n = Number(data.count || 0);
+            likeCount.textContent = `${n} lượt thích`;
+        }
+        if (likeBtn) {
+            if (data.liked) {
+                likeBtn.classList.add("liked");
+                likeBtn.textContent = "❤️ Đã thích";
+            } else {
+                likeBtn.classList.remove("liked");
+                likeBtn.textContent = "👍 Thích";
+            }
+            likeBtn.disabled = false;
+        }
+    } catch (e) {
+        setCommentHint(`Không tải lượt thích: ${e.message}`, true);
+    }
+}
+
 window.addEventListener("DOMContentLoaded", async () => {
     if (location.hostname.endsWith("github.io") && !API_BASE) {
         setDetailStatus(
@@ -137,6 +177,8 @@ window.addEventListener("DOMContentLoaded", async () => {
         return;
     }
 
+    await loadLikeState(id, user);
+
     async function loadComments() {
         try {
             const res = await apiFetch(`/api/videos/${encodeURIComponent(id)}/comments`);
@@ -174,6 +216,26 @@ window.addEventListener("DOMContentLoaded", async () => {
             if (input) input.value = "";
             setCommentHint("Đã gửi bình luận.", false);
             await loadComments();
+        } catch (e) {
+            setCommentHint(e.message || String(e), true);
+        }
+    });
+
+    document.getElementById("likeBtn")?.addEventListener("click", async () => {
+        const u = loadCurrentUser();
+        if (!u?.nguoi_dung_id) {
+            setCommentHint("Bạn cần đăng nhập để thích video.", true);
+            return;
+        }
+        try {
+            const res = await apiFetch(`/api/videos/${encodeURIComponent(id)}/likes/toggle`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ nguoi_dung_id: u.nguoi_dung_id }),
+            });
+            const data = await parseJsonResponse(res);
+            if (!res.ok || !data.ok) throw new Error(data.error || "Không cập nhật lượt thích.");
+            await loadLikeState(id, u);
         } catch (e) {
             setCommentHint(e.message || String(e), true);
         }

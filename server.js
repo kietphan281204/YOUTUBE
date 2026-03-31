@@ -263,6 +263,111 @@ app.post("/api/videos/:id/comments", async (req, res) => {
   }
 });
 
+// Like / Unlike video
+// GET  /api/videos/:id/likes?nguoi_dung_id=...
+// POST /api/videos/:id/likes/toggle  { nguoi_dung_id: number }
+app.get("/api/videos/:id/likes", async (req, res) => {
+  try {
+    const videoId = Number(req.params.id);
+    const userId = Number(req.query?.nguoi_dung_id);
+
+    if (!Number.isFinite(videoId) || videoId <= 0) {
+      return res.status(400).json({ ok: false, error: "ID video không hợp lệ." });
+    }
+
+    const pool = await sql.connect(sqlConfig);
+
+    const cnt = await pool
+      .request()
+      .input("Vid", sql.Int, Math.trunc(videoId))
+      .query("SELECT COUNT(*) AS n FROM dbo.luot_thich WHERE video_id = @Vid");
+
+    let liked = false;
+    if (Number.isFinite(userId) && userId > 0) {
+      const r = await pool
+        .request()
+        .input("Vid", sql.Int, Math.trunc(videoId))
+        .input("Uid", sql.Int, Math.trunc(userId))
+        .query(
+          "SELECT 1 AS ok FROM dbo.luot_thich WHERE video_id = @Vid AND nguoi_dung_id = @Uid"
+        );
+      liked = !!r.recordset?.length;
+    }
+
+    res.json({
+      ok: true,
+      count: Number(cnt.recordset?.[0]?.n ?? 0),
+      liked,
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err?.message || String(err) });
+  }
+});
+
+app.post("/api/videos/:id/likes/toggle", async (req, res) => {
+  try {
+    const videoId = Number(req.params.id);
+    const userId = Number(req.body?.nguoi_dung_id);
+
+    if (!Number.isFinite(videoId) || videoId <= 0) {
+      return res.status(400).json({ ok: false, error: "ID video không hợp lệ." });
+    }
+    if (!Number.isFinite(userId) || userId <= 0) {
+      return res.status(401).json({ ok: false, error: "Cần đăng nhập để thích video." });
+    }
+
+    const pool = await sql.connect(sqlConfig);
+
+    const vExists = await pool
+      .request()
+      .input("Vid", sql.Int, Math.trunc(videoId))
+      .query("SELECT 1 AS ok FROM dbo.video WHERE video_id = @Vid");
+    if (!vExists.recordset?.length) {
+      return res.status(404).json({ ok: false, error: "Không tìm thấy video." });
+    }
+
+    const uExists = await pool
+      .request()
+      .input("Uid", sql.Int, Math.trunc(userId))
+      .query("SELECT 1 AS ok FROM dbo.nguoi_dung WHERE nguoi_dung_id = @Uid");
+    if (!uExists.recordset?.length) {
+      return res.status(400).json({ ok: false, error: "Người dùng không tồn tại." });
+    }
+
+    const existing = await pool
+      .request()
+      .input("Vid", sql.Int, Math.trunc(videoId))
+      .input("Uid", sql.Int, Math.trunc(userId))
+      .query("SELECT 1 AS ok FROM dbo.luot_thich WHERE video_id = @Vid AND nguoi_dung_id = @Uid");
+
+    let liked;
+    if (existing.recordset?.length) {
+      await pool
+        .request()
+        .input("Vid", sql.Int, Math.trunc(videoId))
+        .input("Uid", sql.Int, Math.trunc(userId))
+        .query("DELETE FROM dbo.luot_thich WHERE video_id = @Vid AND nguoi_dung_id = @Uid");
+      liked = false;
+    } else {
+      await pool
+        .request()
+        .input("Vid", sql.Int, Math.trunc(videoId))
+        .input("Uid", sql.Int, Math.trunc(userId))
+        .query("INSERT INTO dbo.luot_thich (video_id, nguoi_dung_id) VALUES (@Vid, @Uid)");
+      liked = true;
+    }
+
+    const cnt = await pool
+      .request()
+      .input("Vid", sql.Int, Math.trunc(videoId))
+      .query("SELECT COUNT(*) AS n FROM dbo.luot_thich WHERE video_id = @Vid");
+
+    res.json({ ok: true, liked, count: Number(cnt.recordset?.[0]?.n ?? 0) });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err?.message || String(err) });
+  }
+});
+
 // Quick diagnostics: confirms which DB settings server is using (no password leaked)
 app.get("/api/diag", (_req, res) => {
   res.json({

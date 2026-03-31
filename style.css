@@ -98,6 +98,22 @@ main {
     color: #555;
 }
 
+.likeRow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.likeCount {
+    font-size: 14px;
+    color: #555;
+}
+
+.likeBtn.liked {
+    background: #e53935;
+}
+
 .videoCard video {
     width: 100%;
     border-radius: 8px;

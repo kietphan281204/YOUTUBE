@@ -164,6 +164,46 @@ function probeVideoDurationSeconds(filePath) {
   });
 }
 
+function toAbsoluteUploadPath(relativeUrl) {
+  const p = String(relativeUrl || "").trim();
+  if (!p) return "";
+  // "/uploads/abc.mp4" -> "uploads/abc.mp4"
+  const cleaned = p.replace(/^[/\\]+/, "");
+  return path.join(staticDir, cleaned);
+}
+
+async function backfillVideoDurations() {
+  try {
+    const pool = await sql.connect(sqlConfig);
+    const result = await pool.request().query(
+      "SELECT TOP (300) video_id, duong_dan_video, thoi_luong FROM dbo.video WHERE ISNULL(thoi_luong, 0) = 0 ORDER BY video_id DESC"
+    );
+    const rows = result.recordset || [];
+    if (!rows.length) return;
+
+    let updated = 0;
+    for (const row of rows) {
+      const absPath = toAbsoluteUploadPath(row.duong_dan_video);
+      if (!absPath || !fs.existsSync(absPath)) continue;
+      const dur = await probeVideoDurationSeconds(absPath);
+      if (!Number.isFinite(dur) || dur <= 0) continue;
+
+      await pool
+        .request()
+        .input("Id", sql.Int, Number(row.video_id))
+        .input("Duration", sql.Int, Math.trunc(dur))
+        .query("UPDATE dbo.video SET thoi_luong = @Duration WHERE video_id = @Id");
+      updated += 1;
+    }
+
+    // eslint-disable-next-line no-console
+    console.log(`[duration] backfill done: updated ${updated}/${rows.length} rows with thoi_luong.`);
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn("[duration] backfill failed:", e?.message || e);
+  }
+}
+
 app.post("/api/auth/register", async (req, res) => {
   try {
     const tenDangNhap = String(req.body?.ten_dang_nhap || "").trim().slice(0, 255);
@@ -847,6 +887,7 @@ async function ensureDemoNguoiDung() {
 
 (async () => {
   await ensureDemoNguoiDung();
+  await backfillVideoDurations();
   app.listen(port, () => {
     // eslint-disable-next-line no-console
     console.log(`Server running at http://localhost:${port}`);

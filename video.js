@@ -171,6 +171,11 @@ window.addEventListener("DOMContentLoaded", async () => {
         document.getElementById("detailMeta").textContent = v.UploadedAt
             ? `Đăng: ${new Date(v.UploadedAt).toLocaleString()}`
             : "";
+        const viewCountEl = document.getElementById("viewCount");
+        if (viewCountEl) {
+            const n = Number(v.LuotXem ?? v.luot_xem ?? 0);
+            viewCountEl.textContent = `${Number.isFinite(n) ? n : 0} lượt xem`;
+        }
         setDetailStatus("", false);
     } catch (e) {
         setDetailStatus(e.message || String(e), true);

@@ -148,6 +148,38 @@ async function loadVideos() {
     }
 }
 
+function getVideoDurationSeconds(file) {
+    return new Promise((resolve) => {
+        try {
+            const el = document.createElement("video");
+            const objectUrl = URL.createObjectURL(file);
+            let done = false;
+
+            const finish = (value) => {
+                if (done) return;
+                done = true;
+                try {
+                    URL.revokeObjectURL(objectUrl);
+                } catch {
+                    // ignore revoke errors
+                }
+                const n = Number(value);
+                resolve(Number.isFinite(n) && n >= 0 ? Math.round(n) : 0);
+            };
+
+            el.preload = "metadata";
+            el.src = objectUrl;
+            el.onloadedmetadata = () => finish(el.duration);
+            el.onerror = () => finish(0);
+
+            // Safety timeout in case browser never fires metadata events.
+            setTimeout(() => finish(0), 5000);
+        } catch {
+            resolve(0);
+        }
+    });
+}
+
 // Hàm đăng video
 async function uploadVideo() {
     if (!currentUser?.nguoi_dung_id) {
@@ -168,8 +200,10 @@ async function uploadVideo() {
     setStatus("Đang upload...", false);
 
     try {
+        const durationSeconds = await getVideoDurationSeconds(file);
         const form = new FormData();
         form.append("title", titleInput?.value || "");
+        form.append("thoi_luong", String(durationSeconds));
         if (Number.isFinite(Number(currentUser?.nguoi_dung_id))) {
             form.append("nguoi_dung_id", String(currentUser.nguoi_dung_id));
         }

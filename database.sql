@@ -60,3 +60,11 @@ BEGIN
   );
 END
 GO
+
+-- Thêm luot_xem vào dbo.nguoi_xem (đếm số lần xem theo người xem)
+IF COL_LENGTH('dbo.nguoi_xem', 'luot_xem') IS NULL
+BEGIN
+  ALTER TABLE dbo.nguoi_xem
+  ADD luot_xem INT NOT NULL CONSTRAINT DF_nguoi_xem_luot_xem DEFAULT (0);
+END
+GO

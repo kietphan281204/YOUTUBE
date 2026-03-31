@@ -288,6 +288,7 @@ app.get("/api/videos/:id", async (req, res) => {
       const hasThietBi = cols.has("thiet_bi");
       const hasNguoiDungIdCol = cols.has("nguoi_dung_id");
       const hasTenNguoiXemCol = cols.has("ten_nguoi_xem");
+      const hasLuotXemCol = cols.has("luot_xem");
 
       // Nếu schema không có đủ cột để định danh, chỉ bỏ qua ghi nhận.
       if (hasDiaChiIp && hasThietBi) {
@@ -314,12 +315,20 @@ app.get("/api/videos/:id", async (req, res) => {
             await pool
               .request()
               .input("Id", sql.Int, existedRow.Id)
-              .query("UPDATE dbo.nguoi_xem SET ngay_truy_cap = GETDATE() WHERE nguoi_xem_id = @Id");
+              .query(
+                `UPDATE dbo.nguoi_xem SET ngay_truy_cap = GETDATE()${
+                  hasLuotXemCol ? ", luot_xem = ISNULL(luot_xem, 0) + 1" : ""
+                } WHERE nguoi_xem_id = @Id`
+              );
           } else if (cols.has("ngay_cap_nhat")) {
             await pool
               .request()
               .input("Id", sql.Int, existedRow.Id)
-              .query("UPDATE dbo.nguoi_xem SET ngay_cap_nhat = GETDATE() WHERE nguoi_xem_id = @Id");
+              .query(
+                `UPDATE dbo.nguoi_xem SET ngay_cap_nhat = GETDATE()${
+                  hasLuotXemCol ? ", luot_xem = ISNULL(luot_xem, 0) + 1" : ""
+                } WHERE nguoi_xem_id = @Id`
+              );
           }
         } else {
           // Nếu bảng nguoi_xem có UNIQUE theo nguoi_dung_id,
@@ -339,6 +348,7 @@ app.get("/api/videos/:id", async (req, res) => {
               if (cols.has("thiet_bi")) setParts.push("thiet_bi = @Tb");
               if (cols.has("ngay_truy_cap")) setParts.push("ngay_truy_cap = GETDATE()");
               else if (cols.has("ngay_cap_nhat")) setParts.push("ngay_cap_nhat = GETDATE()");
+              if (hasLuotXemCol) setParts.push("luot_xem = ISNULL(luot_xem, 0) + 1");
 
               if (setParts.length) {
                 const uReq = pool.request().input("Id", sql.Int, existedByUser.Id).input("TenNguoiXem", sql.NVarChar(255), tenNguoiXem).input("Ip", sql.NVarChar(255), ipClamped).input("Tb", sql.NVarChar(500), thietBi);
@@ -361,7 +371,7 @@ app.get("/api/videos/:id", async (req, res) => {
           if (cols.has("dia_chi_ip")) {
             insertCols.push("dia_chi_ip");
             insertVals.push("@Ip");
-            reqSql.input("Ip", sql.NVarChar(100), ipSafe);
+            reqSql.input("Ip", sql.NVarChar(255), ipClamped);
           }
           if (cols.has("thiet_bi")) {
             insertCols.push("thiet_bi");
@@ -372,6 +382,10 @@ app.get("/api/videos/:id", async (req, res) => {
             insertCols.push("nguoi_dung_id");
             insertVals.push("@NguoiDungId");
             reqSql.input("NguoiDungId", sql.Int, Math.trunc(viewerNguoiDungId));
+          }
+          if (hasLuotXemCol) {
+            insertCols.push("luot_xem");
+            insertVals.push("1");
           }
 
           if (hasNguoiDungIdCol && (!Number.isFinite(viewerNguoiDungId) || viewerNguoiDungId <= 0)) {

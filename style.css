@@ -98,6 +98,13 @@ main {
     color: #555;
 }
 
+.videoDescription {
+    margin: 6px 0 10px;
+    color: #333;
+    font-size: 14px;
+    white-space: pre-wrap;
+}
+
 .likeRow {
     display: flex;
     align-items: center;

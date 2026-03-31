@@ -171,6 +171,11 @@ window.addEventListener("DOMContentLoaded", async () => {
         if (!resV.ok || !dataV.ok) throw new Error(dataV.error || "Không tải được video.");
         const v = dataV.video;
         document.getElementById("detailTitle").textContent = v.Title || "Video";
+        const descEl = document.getElementById("detailDescription");
+        if (descEl) {
+            const d = String(v.Description ?? v.mo_ta ?? "").trim();
+            descEl.textContent = d || "Chưa có mô tả.";
+        }
         const vid = document.getElementById("detailVideo");
         vid.src = apiUrl(v.RelativeUrl);
         document.getElementById("detailMeta").textContent = v.UploadedAt

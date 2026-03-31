@@ -525,6 +525,7 @@ app.get("/api/videos/:id", async (req, res) => {
         "UPDATE dbo.video SET luot_xem = luot_xem + 1 " +
           "OUTPUT INSERTED.video_id AS Id, " +
           "INSERTED.tieu_de AS Title, " +
+          "INSERTED.mo_ta AS Description, " +
           "INSERTED.duong_dan_video AS RelativeUrl, " +
           "INSERTED.luot_xem AS LuotXem, " +
           "INSERTED.ngay_tao AS UploadedAt " +

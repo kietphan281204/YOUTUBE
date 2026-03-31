@@ -236,7 +236,7 @@ app.get("/api/videos/:id", async (req, res) => {
 
       const viewerHash = crypto
         .createHash("sha256")
-        .update(`${ip}|${thietBi}`)
+        .update(`${ip}|${thietBiRaw}`)
         .digest("hex")
         .slice(0, 12);
       const ipSafe = ip || "0.0.0.0";
@@ -322,6 +322,32 @@ app.get("/api/videos/:id", async (req, res) => {
               .query("UPDATE dbo.nguoi_xem SET ngay_cap_nhat = GETDATE() WHERE nguoi_xem_id = @Id");
           }
         } else {
+          // Nếu bảng nguoi_xem có UNIQUE theo nguoi_dung_id,
+          // thì có thể đã tồn tại 1 dòng cho user đó (dù ip/thiet_bi khác).
+          // Khi đó cần UPDATE theo nguoi_dung_id thay vì INSERT.
+          if (hasNguoiDungIdCol && Number.isFinite(viewerNguoiDungId) && viewerNguoiDungId > 0) {
+            const existingByUser = await pool
+              .request()
+              .input("Uid", sql.Int, Math.trunc(viewerNguoiDungId))
+              .query("SELECT TOP (1) nguoi_xem_id AS Id FROM dbo.nguoi_xem WHERE nguoi_dung_id = @Uid");
+
+            const existedByUser = existingByUser.recordset?.[0];
+            if (existedByUser?.Id) {
+              const setParts = [];
+              if (cols.has("ten_nguoi_xem")) setParts.push("ten_nguoi_xem = @TenNguoiXem");
+              if (cols.has("dia_chi_ip")) setParts.push("dia_chi_ip = @Ip");
+              if (cols.has("thiet_bi")) setParts.push("thiet_bi = @Tb");
+              if (cols.has("ngay_truy_cap")) setParts.push("ngay_truy_cap = GETDATE()");
+              else if (cols.has("ngay_cap_nhat")) setParts.push("ngay_cap_nhat = GETDATE()");
+
+              if (setParts.length) {
+                const uReq = pool.request().input("Id", sql.Int, existedByUser.Id).input("TenNguoiXem", sql.NVarChar(255), tenNguoiXem).input("Ip", sql.NVarChar(255), ipClamped).input("Tb", sql.NVarChar(500), thietBi);
+                await uReq.query(`UPDATE dbo.nguoi_xem SET ${setParts.join(", ")} WHERE nguoi_xem_id = @Id`);
+              }
+              return; // đã update theo nguoi_dung_id
+            }
+          }
+
           // build insert theo cột tồn tại để tránh lỗi do schema khác
           const insertCols = [];
           const insertVals = [];

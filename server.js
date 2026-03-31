@@ -835,7 +835,7 @@ app.post("/api/videos", upload.single("video"), async (req, res) => {
         // Khớp Design VIDEO1.dbo.video: mo_ta/danh_muc_id/tag_id nullable; luot_xem bigint NOT NULL
         "INSERT INTO dbo.video (nguoi_dung_id, tieu_de, mo_ta, duong_dan_video, duong_dan_anh_bia, thoi_luong, luot_xem, ngay_tao, ngay_cap_nhat, danh_muc_id, tag_id) " +
           "OUTPUT INSERTED.video_id AS Id, INSERTED.tieu_de AS Title, INSERTED.duong_dan_video AS RelativeUrl, INSERTED.ngay_tao AS UploadedAt " +
-          "VALUES (@NguoiDungId, @Title, @Description, @Path, @Path, @Duration, CAST(0 AS BIGINT), GETDATE(), GETDATE(), NULL, NULL)"
+          "VALUES (@NguoiDungId, @Title, COALESCE(NULLIF(@Description, N''), @Title), @Path, @Path, @Duration, CAST(0 AS BIGINT), GETDATE(), GETDATE(), NULL, NULL)"
       );
 
     // Một số schema/trigger cũ có thể làm mo_ta về NULL khi INSERT.
@@ -846,7 +846,14 @@ app.post("/api/videos", upload.single("video"), async (req, res) => {
         .request()
         .input("Id", sql.Int, Math.trunc(newId))
         .input("Description", sql.NVarChar(sql.MAX), description)
-        .query("UPDATE dbo.video SET mo_ta = @Description WHERE video_id = @Id");
+        .query(
+          "UPDATE dbo.video SET mo_ta = COALESCE(NULLIF(@Description, N''), tieu_de) WHERE video_id = @Id"
+        );
+    } else if (Number.isFinite(newId) && newId > 0) {
+      await pool
+        .request()
+        .input("Id", sql.Int, Math.trunc(newId))
+        .query("UPDATE dbo.video SET mo_ta = COALESCE(NULLIF(mo_ta, N''), tieu_de) WHERE video_id = @Id");
     }
 
     res.json({ ok: true, video: insert.recordset[0] });

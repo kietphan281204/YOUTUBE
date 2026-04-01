@@ -173,7 +173,7 @@ window.addEventListener("DOMContentLoaded", async () => {
         document.getElementById("detailTitle").textContent = v.Title || "Video";
         const descEl = document.getElementById("detailDescription");
         if (descEl) {
-            const d = String(v.Description ?? v.mo_ta ?? "").trim();
+            const d = String(v.Description ?? v.description ?? v.mo_ta ?? "").trim();
             descEl.textContent = d || "Chưa có mô tả.";
         }
         const vid = document.getElementById("detailVideo");

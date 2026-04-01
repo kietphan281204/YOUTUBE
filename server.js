@@ -75,6 +75,28 @@ function mapNguoiDungRow(row) {
   };
 }
 
+/** Multer đặt text field vào req.body; đôi khi key khác chữ hoa hoặc là mảng — không được nhầm với tiêu đề. */
+function getMultipartField(body, keys) {
+  if (!body || typeof body !== "object") return undefined;
+  const lower = {};
+  for (const k of Object.keys(body)) {
+    lower[String(k).toLowerCase()] = body[k];
+  }
+  for (const key of keys) {
+    let v = body[key];
+    if (v === undefined) v = lower[String(key).toLowerCase()];
+    if (v === undefined) continue;
+    return Array.isArray(v) ? v[v.length - 1] : v;
+  }
+  return undefined;
+}
+
+function sliceText(raw, maxLen) {
+  if (raw == null) return "";
+  const s = typeof raw === "string" ? raw : String(raw);
+  return s.trim().slice(0, maxLen);
+}
+
 let nguoiXemColumnsCache = null;
 async function getNguoiXemColumns(pool) {
   if (nguoiXemColumnsCache) return nguoiXemColumnsCache;
@@ -201,22 +223,6 @@ async function backfillVideoDurations() {
   } catch (e) {
     // eslint-disable-next-line no-console
     console.warn("[duration] backfill failed:", e?.message || e);
-  }
-}
-
-async function backfillVideoDescriptions() {
-  try {
-    const pool = await sql.connect(sqlConfig);
-    const updated = await pool.request().query(
-      "UPDATE dbo.video " +
-        "SET mo_ta = LEFT(COALESCE(NULLIF(tieu_de, N''), N'Video không có mô tả'), 4000) " +
-        "WHERE mo_ta IS NULL OR LTRIM(RTRIM(mo_ta)) = N''"
-    );
-    // eslint-disable-next-line no-console
-    console.log(`[description] backfill done: ${Number(updated.rowsAffected?.[0] || 0)} rows.`);
-  } catch (e) {
-    // eslint-disable-next-line no-console
-    console.warn("[description] backfill failed:", e?.message || e);
   }
 }
 
@@ -533,21 +539,18 @@ app.get("/api/videos/:id", async (req, res) => {
       });
     }
 
+    await pool
+      .request()
+      .input("Id", sql.Int, Math.trunc(id))
+      .query("UPDATE dbo.video SET luot_xem = luot_xem + 1 WHERE video_id = @Id");
+
     const result = await pool
       .request()
       .input("Id", sql.Int, Math.trunc(id))
       .query(
-        // Mỗi lần mở trang chi tiết => tăng lượt xem +1
-        "UPDATE dbo.video " +
-          "SET luot_xem = luot_xem + 1, " +
-          "mo_ta = COALESCE(NULLIF(mo_ta, N''), tieu_de) " +
-          "OUTPUT INSERTED.video_id AS Id, " +
-          "INSERTED.tieu_de AS Title, " +
-          "COALESCE(NULLIF(INSERTED.mo_ta, N''), INSERTED.tieu_de) AS Description, " +
-          "INSERTED.duong_dan_video AS RelativeUrl, " +
-          "INSERTED.luot_xem AS LuotXem, " +
-          "INSERTED.ngay_tao AS UploadedAt " +
-          "WHERE video_id = @Id"
+        "SELECT video_id AS Id, tieu_de AS Title, mo_ta AS Description, " +
+          "duong_dan_video AS RelativeUrl, luot_xem AS LuotXem, ngay_tao AS UploadedAt " +
+          "FROM dbo.video WHERE video_id = @Id"
       );
     const row = result.recordset?.[0];
     if (!row) return res.status(404).json({ ok: false, error: "Không tìm thấy video." });
@@ -787,22 +790,16 @@ app.get("/api/nguoi-dung-columns", nguoiDungColumnsHandler);
 
 app.post("/api/videos", upload.single("video"), async (req, res) => {
   try {
-    // tieu_de thường NOT NULL trong dbo.video — luôn gửi chuỗi (có thể rỗng).
-    const title =
-      typeof req.body?.title === "string"
-        ? req.body.title.trim().slice(0, 255)
-        : req.body?.title != null
-          ? String(req.body.title).trim().slice(0, 255)
-          : "";
-    const descriptionSource = req.body?.mo_ta ?? req.body?.description ?? req.body?.title ?? "";
-    const descriptionRaw =
-      typeof descriptionSource === "string"
-        ? descriptionSource.trim()
-        : descriptionSource != null
-          ? String(descriptionSource).trim()
-          : "";
-    const description = descriptionRaw.slice(0, 4000);
-    const rawDuration = Number(req.body?.thoi_luong);
+    const title = sliceText(
+      getMultipartField(req.body, ["title", "tieu_de", "Tieu_de", "TIEU_DE"]),
+      255
+    );
+    // Chỉ lấy mô tả từ field mô tả — không fallback sang tiêu đề (tránh lưu trùng tiêu đề).
+    const description = sliceText(
+      getMultipartField(req.body, ["mo_ta", "description", "Mo_ta", "Description", "noi_dung"]),
+      4000
+    );
+    const rawDuration = Number(getMultipartField(req.body, ["thoi_luong", "Thoi_luong"]));
     const clientDuration =
       Number.isFinite(rawDuration) && rawDuration >= 0 ? Math.trunc(rawDuration) : 0;
     if (!req.file) return res.status(400).json({ ok: false, error: "Thiếu file video." });
@@ -829,7 +826,9 @@ app.post("/api/videos", upload.single("video"), async (req, res) => {
       });
     }
 
-    const bodyNguoiDungId = Number(req.body?.nguoi_dung_id);
+    const bodyNguoiDungId = Number(
+      getMultipartField(req.body, ["nguoi_dung_id", "Nguoi_dung_id", "nguoiDungId"])
+    );
     const wantId = Number.isFinite(bodyNguoiDungId) && bodyNguoiDungId > 0
       ? bodyNguoiDungId
       : Number(process.env.DEFAULT_NGUOI_DUNG_ID);
@@ -852,46 +851,17 @@ app.post("/api/videos", upload.single("video"), async (req, res) => {
       .query(
         // Khớp Design VIDEO1.dbo.video: mo_ta/danh_muc_id/tag_id nullable; luot_xem bigint NOT NULL
         "INSERT INTO dbo.video (nguoi_dung_id, tieu_de, mo_ta, duong_dan_video, duong_dan_anh_bia, thoi_luong, luot_xem, ngay_tao, ngay_cap_nhat, danh_muc_id, tag_id) " +
-          "OUTPUT INSERTED.video_id AS Id, INSERTED.tieu_de AS Title, INSERTED.duong_dan_video AS RelativeUrl, INSERTED.ngay_tao AS UploadedAt " +
-          "VALUES (@NguoiDungId, @Title, COALESCE(NULLIF(@Description, N''), @Title), @Path, @Path, @Duration, CAST(0 AS BIGINT), GETDATE(), GETDATE(), NULL, NULL)"
+          "OUTPUT INSERTED.video_id AS Id, INSERTED.tieu_de AS Title, INSERTED.mo_ta AS Description, INSERTED.duong_dan_video AS RelativeUrl, INSERTED.ngay_tao AS UploadedAt " +
+          "VALUES (@NguoiDungId, @Title, NULLIF(@Description, N''), @Path, @Path, @Duration, CAST(0 AS BIGINT), GETDATE(), GETDATE(), NULL, NULL)"
       );
 
-    // Một số schema/trigger cũ có thể làm mo_ta về NULL khi INSERT.
-    // Cập nhật lại chắc chắn ngay sau khi tạo video.
     const newId = Number(insert.recordset?.[0]?.Id);
     if (Number.isFinite(newId) && newId > 0 && description.length > 0) {
       await pool
         .request()
         .input("Id", sql.Int, Math.trunc(newId))
         .input("Description", sql.NVarChar(sql.MAX), description)
-        .query(
-          "UPDATE dbo.video SET mo_ta = COALESCE(NULLIF(@Description, N''), tieu_de) WHERE video_id = @Id"
-        );
-    } else if (Number.isFinite(newId) && newId > 0) {
-      await pool
-        .request()
-        .input("Id", sql.Int, Math.trunc(newId))
-        .query("UPDATE dbo.video SET mo_ta = COALESCE(NULLIF(mo_ta, N''), tieu_de) WHERE video_id = @Id");
-    }
-
-    // Đọc lại row vừa insert và ép thêm 1 lần nếu còn null/rỗng.
-    if (Number.isFinite(newId) && newId > 0) {
-      const check = await pool
-        .request()
-        .input("Id", sql.Int, Math.trunc(newId))
-        .query(
-          "SELECT TOP (1) tieu_de AS Title, mo_ta AS Description FROM dbo.video WHERE video_id = @Id"
-        );
-      const afterInsert = check.recordset?.[0];
-      const savedDesc = String(afterInsert?.Description ?? "").trim();
-      const savedTitle = String(afterInsert?.Title ?? "").trim().slice(0, 4000);
-      if (!savedDesc && savedTitle) {
-        await pool
-          .request()
-          .input("Id", sql.Int, Math.trunc(newId))
-          .input("FallbackDescription", sql.NVarChar(sql.MAX), savedTitle)
-          .query("UPDATE dbo.video SET mo_ta = @FallbackDescription WHERE video_id = @Id");
-      }
+        .query("UPDATE dbo.video SET mo_ta = @Description WHERE video_id = @Id");
     }
 
     res.json({ ok: true, video: insert.recordset[0] });
@@ -953,7 +923,6 @@ async function ensureDemoNguoiDung() {
 
 (async () => {
   await ensureDemoNguoiDung();
-  await backfillVideoDescriptions();
   await backfillVideoDurations();
 app.listen(port, () => {
   // eslint-disable-next-line no-console

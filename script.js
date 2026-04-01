@@ -209,8 +209,10 @@ async function uploadVideo() {
         const durationSeconds = await getVideoDurationSeconds(file);
         const form = new FormData();
         form.append("title", titleInput?.value || "");
-        form.append("mo_ta", descriptionInput?.value || "");
-        form.append("description", descriptionInput?.value || "");
+        // Gửi mô tả trước file; một số proxy/multer dễ mất field nếu thứ tự sai.
+        const descVal = descriptionInput?.value ?? "";
+        form.append("mo_ta", descVal);
+        form.append("description", descVal);
         form.append("thoi_luong", String(durationSeconds));
         if (Number.isFinite(Number(currentUser?.nguoi_dung_id))) {
             form.append("nguoi_dung_id", String(currentUser.nguoi_dung_id));

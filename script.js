@@ -196,6 +196,13 @@ async function uploadVideo() {
     const container = document.getElementById("videoContainer");
     const titleInput = document.getElementById("titleInput");
     const descriptionInput = document.getElementById("descriptionInput");
+    if (!descriptionInput) {
+        setStatus(
+            "Trang thiếu ô mô tả (id=descriptionInput). Hãy git pull, push GitHub Pages và Ctrl+F5.",
+            true
+        );
+        return;
+    }
 
     if (input.files.length === 0) {
         alert("Vui lòng chọn video!");
@@ -210,7 +217,8 @@ async function uploadVideo() {
         const form = new FormData();
         form.append("title", titleInput?.value || "");
         // Gửi mô tả trước file; một số proxy/multer dễ mất field nếu thứ tự sai.
-        const descVal = descriptionInput?.value ?? "";
+        const descVal = descriptionInput.value ?? "";
+        form.append("video_description", descVal);
         form.append("mo_ta", descVal);
         form.append("description", descVal);
         form.append("thoi_luong", String(durationSeconds));

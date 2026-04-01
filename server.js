@@ -51,7 +51,10 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 500 * 1024 * 1024 }, // 500MB
+  limits: {
+    fileSize: 500 * 1024 * 1024, // 500MB
+    fieldSize: 5 * 1024 * 1024, // mô tả dài vẫn an toàn
+  },
   fileFilter: (_req, file, cb) => {
     const mime = String(file.mimetype || "");
     const ext = path.extname(file.originalname || "").toLowerCase();
@@ -95,6 +98,48 @@ function sliceText(raw, maxLen) {
   if (raw == null) return "";
   const s = typeof raw === "string" ? raw : String(raw);
   return s.trim().slice(0, maxLen);
+}
+
+/**
+ * Lấy mô tả từ multipart: ưu tiên tên field chuẩn, sau đó quét mọi key (proxy/ngrok đôi khi đổi tên).
+ * Không dùng tieu_de/title làm mô tả.
+ */
+function extractDescriptionFromBody(body) {
+  const priority = [
+    "video_description",
+    "mo_ta",
+    "mota",
+    "Mo_ta",
+    "description",
+    "Description",
+    "noi_dung",
+    "noi_dung_mo_ta",
+    "content",
+    "ghi_chu",
+  ];
+  for (const key of priority) {
+    const v = getMultipartField(body, [key]);
+    const s = sliceText(v, 4000);
+    if (s) return s;
+  }
+  if (!body || typeof body !== "object") return "";
+  const titleLike = /^(title|tieu_de)$/i;
+  for (const k of Object.keys(body)) {
+    if (titleLike.test(String(k).trim())) continue;
+    const kl = String(k).toLowerCase().replace(/\s+/g, "_");
+    if (
+      kl.includes("mo_ta") ||
+      kl.includes("mota") ||
+      kl === "description" ||
+      kl.includes("noi_dung") ||
+      kl.includes("video_desc")
+    ) {
+      const v = getMultipartField(body, [k]);
+      const s = sliceText(v, 4000);
+      if (s) return s;
+    }
+  }
+  return "";
 }
 
 let nguoiXemColumnsCache = null;
@@ -794,11 +839,7 @@ app.post("/api/videos", upload.single("video"), async (req, res) => {
       getMultipartField(req.body, ["title", "tieu_de", "Tieu_de", "TIEU_DE"]),
       255
     );
-    // Chỉ lấy mô tả từ field mô tả — không fallback sang tiêu đề (tránh lưu trùng tiêu đề).
-    const description = sliceText(
-      getMultipartField(req.body, ["mo_ta", "description", "Mo_ta", "Description", "noi_dung"]),
-      4000
-    );
+    const description = extractDescriptionFromBody(req.body);
     const rawDuration = Number(getMultipartField(req.body, ["thoi_luong", "Thoi_luong"]));
     const clientDuration =
       Number.isFinite(rawDuration) && rawDuration >= 0 ? Math.trunc(rawDuration) : 0;
@@ -862,9 +903,37 @@ app.post("/api/videos", upload.single("video"), async (req, res) => {
         .input("Id", sql.Int, Math.trunc(newId))
         .input("Description", sql.NVarChar(sql.MAX), description)
         .query("UPDATE dbo.video SET mo_ta = @Description WHERE video_id = @Id");
+      const verify = await pool
+        .request()
+        .input("Id", sql.Int, Math.trunc(newId))
+        .query("SELECT mo_ta FROM dbo.video WHERE video_id = @Id");
+      const saved = (verify.recordset?.[0]?.mo_ta ?? verify.recordset?.[0]?.MO_TA);
+      const stillEmpty = saved == null || String(saved).trim() === "";
+      if (stillEmpty) {
+        await pool
+          .request()
+          .input("Id", sql.Int, Math.trunc(newId))
+          .input("Description", sql.NVarChar(sql.MAX), description)
+          .query("UPDATE dbo.video SET mo_ta = @Description WHERE video_id = @Id");
+        console.warn("[upload] mo_ta was empty after first UPDATE; retried (check trigger on dbo.video).", {
+          video_id: newId,
+        });
+      }
     }
 
-    res.json({ ok: true, video: insert.recordset[0] });
+    let videoOut = insert.recordset?.[0];
+    if (Number.isFinite(newId) && newId > 0) {
+      const refreshed = await pool
+        .request()
+        .input("Id", sql.Int, Math.trunc(newId))
+        .query(
+          "SELECT video_id AS Id, tieu_de AS Title, mo_ta AS Description, " +
+            "duong_dan_video AS RelativeUrl, ngay_tao AS UploadedAt FROM dbo.video WHERE video_id = @Id"
+        );
+      if (refreshed.recordset?.[0]) videoOut = refreshed.recordset[0];
+    }
+
+    res.json({ ok: true, video: videoOut });
   } catch (err) {
     res.status(500).json({ ok: false, error: err?.message || String(err) });
   }

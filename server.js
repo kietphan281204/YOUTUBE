@@ -110,24 +110,29 @@ function sliceText(raw, maxLen) {
   return s.trim().slice(0, maxLen);
 }
 
+/** Chuẩn hoá key cột (mssql có thể trả PascalCase / camelCase / moTa). */
+function rowLowerKeys(row) {
+  const o = {};
+  for (const [k, v] of Object.entries(row)) {
+    o[String(k).toLowerCase()] = v;
+  }
+  return o;
+}
+
 /** JSON trả về cho frontend — luôn có Description (null nếu không có mô tả trong DB). */
 function videoFromRow(row) {
   if (!row || typeof row !== "object") return row;
-  const mo =
-    row.mo_ta ??
-    row.MO_TA ??
-    row.Description ??
-    row.description ??
-    null;
+  const L = rowLowerKeys(row);
+  const mo = L.mo_ta ?? L.mota ?? L.description ?? null;
   const desc =
     mo == null || mo === "" ? null : sliceText(mo, 4000) || null;
   return {
-    Id: row.Id ?? row.id ?? row.video_id ?? row.ID,
-    Title: row.Title ?? row.title ?? row.tieu_de ?? "",
+    Id: L.id ?? L.video_id,
+    Title: L.title ?? L.tieu_de ?? "",
     Description: desc,
-    RelativeUrl: row.RelativeUrl ?? row.relativeUrl ?? row.duong_dan_video,
-    LuotXem: row.LuotXem ?? row.luot_xem,
-    UploadedAt: row.UploadedAt ?? row.uploadedAt ?? row.ngay_tao,
+    RelativeUrl: L.relativeurl ?? L.duong_dan_video,
+    LuotXem: L.luotxem ?? L.luot_xem,
+    UploadedAt: L.uploadedat ?? L.ngay_tao,
   };
 }
 
@@ -143,7 +148,8 @@ function readUploadMeta(req) {
   const metaRaw = getMultipartField(req.body, ["meta"]);
   if (metaRaw != null && String(metaRaw).trim()) {
     try {
-      const m = JSON.parse(String(metaRaw));
+      const cleaned = String(metaRaw).replace(/^\uFEFF/, "").trim();
+      const m = JSON.parse(cleaned);
       if (m && typeof m.mo_ta === "string") moTa = sliceText(m.mo_ta, 4000);
       if (m && typeof m.title === "string") title = sliceText(m.title, 255);
     } catch {
@@ -860,6 +866,21 @@ async function nguoiDungColumnsHandler(_req, res) {
 app.get("/api/db/nguoi-dung-columns", nguoiDungColumnsHandler);
 app.get("/api/nguoi-dung-columns", nguoiDungColumnsHandler);
 
+app.get("/api/db/video-columns", async (_req, res) => {
+  try {
+    const pool = await sql.connect(sqlConfig);
+    const result = await pool.request().query(`
+      SELECT c.name AS column_name, TYPE_NAME(c.user_type_id) AS data_type, c.is_nullable
+      FROM sys.columns c
+      WHERE c.object_id = OBJECT_ID(N'dbo.video')
+      ORDER BY c.column_id
+    `);
+    res.json({ ok: true, columns: result.recordset || [] });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err?.message || String(err) });
+  }
+});
+
 app.post("/api/videos", upload.single("video"), async (req, res) => {
   try {
     const { title, moTa: description } = readUploadMeta(req);
@@ -1018,6 +1039,61 @@ async function ensureDemoNguoiDung() {
   } catch (e) {
     // eslint-disable-next-line no-console
     console.warn("[seed]", e?.message || e);
+  }
+}
+
+if (process.argv.includes("--selftest-upload")) {
+  try {
+    const a = readUploadMeta({
+      body: { meta: '{"title":"Tiêu đề A","mo_ta":"Mô tả B"}' },
+      query: {},
+    });
+    if (a.title !== "Tiêu đề A" || a.moTa !== "Mô tả B") {
+      // eslint-disable-next-line no-console
+      console.error("selftest fail meta", a);
+      process.exit(1);
+    }
+    const b = readUploadMeta({ body: { mo_ta: "trực tiếp" }, query: {} });
+    if (b.moTa !== "trực tiếp") {
+      // eslint-disable-next-line no-console
+      console.error("selftest fail body mo_ta", b);
+      process.exit(1);
+    }
+    const c = readUploadMeta({
+      body: {},
+      query: { mo_ta: encodeURIComponent("query-string") },
+    });
+    if (c.moTa !== "query-string") {
+      // eslint-disable-next-line no-console
+      console.error("selftest fail query", c);
+      process.exit(1);
+    }
+    const vr = videoFromRow({
+      description: "từ SQL alias",
+      video_id: 99,
+      tieu_de: "T",
+      duong_dan_video: "/u",
+      luot_xem: 1,
+      ngay_tao: new Date("2026-01-01"),
+    });
+    if (vr.Description !== "từ SQL alias" || vr.Id !== 99) {
+      // eslint-disable-next-line no-console
+      console.error("selftest fail videoFromRow", vr);
+      process.exit(1);
+    }
+    const vr2 = videoFromRow({ MoTa: "camel", video_id: 1, tieu_de: "x" });
+    if (vr2.Description !== "camel") {
+      // eslint-disable-next-line no-console
+      console.error("selftest fail videoFromRow moTa", vr2);
+      process.exit(1);
+    }
+    // eslint-disable-next-line no-console
+    console.log("selftest-upload: OK");
+    process.exit(0);
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error("selftest-upload:", e);
+    process.exit(1);
   }
 }
 

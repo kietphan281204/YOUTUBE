@@ -831,6 +831,9 @@ app.post("/api/videos/:id/likes/toggle", async (req, res) => {
 app.get("/api/diag", (_req, res) => {
   res.json({
     ok: true,
+    apiHints: {
+      videoColumns: ["/api/video-columns", "/api/db/video-columns"],
+    },
     port: process.env.PORT ? Number(process.env.PORT) : 3000,
     db: {
       server: sqlConfig.server,
@@ -866,7 +869,7 @@ async function nguoiDungColumnsHandler(_req, res) {
 app.get("/api/db/nguoi-dung-columns", nguoiDungColumnsHandler);
 app.get("/api/nguoi-dung-columns", nguoiDungColumnsHandler);
 
-app.get("/api/db/video-columns", async (_req, res) => {
+async function videoColumnsHandler(_req, res) {
   try {
     const pool = await sql.connect(sqlConfig);
     const result = await pool.request().query(`
@@ -879,7 +882,9 @@ app.get("/api/db/video-columns", async (_req, res) => {
   } catch (err) {
     res.status(500).json({ ok: false, error: err?.message || String(err) });
   }
-});
+}
+app.get("/api/db/video-columns", videoColumnsHandler);
+app.get("/api/video-columns", videoColumnsHandler);
 
 app.post("/api/videos", upload.single("video"), async (req, res) => {
   try {

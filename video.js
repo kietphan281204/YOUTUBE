@@ -91,12 +91,8 @@ function escapeHtml(s) {
 
 function pickVideoDescription(v) {
     if (!v || typeof v !== "object") return "";
-    const raw =
-        v.Description ??
-        v.description ??
-        v.mo_ta ??
-        v.MO_TA ??
-        v.mota;
+    // API đã chuẩn hoá `Description`; giữ fallback cho bản cũ.
+    const raw = v.Description ?? v.description ?? v.mo_ta ?? v.MO_TA;
     if (raw == null || raw === "") return "";
     return String(raw).trim();
 }

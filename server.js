@@ -110,23 +110,20 @@ function sliceText(raw, maxLen) {
   return s.trim().slice(0, maxLen);
 }
 
-/** Chuẩn hoá 1 dòng video từ SQL — mssql có thể trả key khác chữ hoa, khiến frontend đọc sai Description. */
-function normalizeVideoRow(row) {
+/** JSON trả về cho frontend — luôn có Description (null nếu không có mô tả trong DB). */
+function videoFromRow(row) {
   if (!row || typeof row !== "object") return row;
-  const descRaw =
-    row.Description ??
-    row.description ??
+  const mo =
     row.mo_ta ??
     row.MO_TA ??
-    row.mota;
+    row.Description ??
+    row.description ??
+    null;
   const desc =
-    descRaw == null || descRaw === ""
-      ? null
-      : sliceText(descRaw, 4000) || null;
+    mo == null || mo === "" ? null : sliceText(mo, 4000) || null;
   return {
-    ...row,
     Id: row.Id ?? row.id ?? row.video_id ?? row.ID,
-    Title: row.Title ?? row.title ?? row.tieu_de,
+    Title: row.Title ?? row.title ?? row.tieu_de ?? "",
     Description: desc,
     RelativeUrl: row.RelativeUrl ?? row.relativeUrl ?? row.duong_dan_video,
     LuotXem: row.LuotXem ?? row.luot_xem,
@@ -135,45 +132,41 @@ function normalizeVideoRow(row) {
 }
 
 /**
- * Lấy mô tả từ multipart: ưu tiên tên field chuẩn, sau đó quét mọi key (proxy/ngrok đôi khi đổi tên).
- * Không dùng tieu_de/title làm mô tả.
+ * Đọc tiêu đề + mô tả khi đăng video (làm lại gọn):
+ * 1) Field `meta` = JSON { title, mo_ta } — ổn định nhất với multipart/multer.
+ * 2) Query ?mo_ta=... (dự phòng).
+ * 3) Form field mo_ta / description.
  */
-function extractDescriptionFromBody(body) {
-  const priority = [
-    "video_description",
-    "mo_ta",
-    "mota",
-    "Mo_ta",
-    "description",
-    "Description",
-    "noi_dung",
-    "noi_dung_mo_ta",
-    "content",
-    "ghi_chu",
-  ];
-  for (const key of priority) {
-    const v = getMultipartField(body, [key]);
-    const s = sliceText(v, 4000);
-    if (s) return s;
-  }
-  if (!body || typeof body !== "object") return "";
-  const titleLike = /^(title|tieu_de)$/i;
-  for (const k of Object.keys(body)) {
-    if (titleLike.test(String(k).trim())) continue;
-    const kl = String(k).toLowerCase().replace(/\s+/g, "_");
-    if (
-      kl.includes("mo_ta") ||
-      kl.includes("mota") ||
-      kl === "description" ||
-      kl.includes("noi_dung") ||
-      kl.includes("video_desc")
-    ) {
-      const v = getMultipartField(body, [k]);
-      const s = sliceText(v, 4000);
-      if (s) return s;
+function readUploadMeta(req) {
+  let title = "";
+  let moTa = "";
+  const metaRaw = getMultipartField(req.body, ["meta"]);
+  if (metaRaw != null && String(metaRaw).trim()) {
+    try {
+      const m = JSON.parse(String(metaRaw));
+      if (m && typeof m.mo_ta === "string") moTa = sliceText(m.mo_ta, 4000);
+      if (m && typeof m.title === "string") title = sliceText(m.title, 255);
+    } catch {
+      /* meta không phải JSON */
     }
   }
-  return "";
+  if (!moTa) {
+    const q = req.query?.mo_ta;
+    if (q != null && q !== "") {
+      try {
+        moTa = sliceText(decodeURIComponent(String(q)), 4000);
+      } catch {
+        moTa = sliceText(String(q), 4000);
+      }
+    }
+  }
+  if (!moTa) {
+    moTa = sliceText(getMultipartField(req.body, ["mo_ta", "description", "video_description"]), 4000);
+  }
+  if (!title) {
+    title = sliceText(getMultipartField(req.body, ["title", "tieu_de"]), 255);
+  }
+  return { title, moTa };
 }
 
 let nguoiXemColumnsCache = null;
@@ -633,7 +626,7 @@ app.get("/api/videos/:id", async (req, res) => {
       );
     const row = result.recordset?.[0];
     if (!row) return res.status(404).json({ ok: false, error: "Không tìm thấy video." });
-    res.json({ ok: true, video: normalizeVideoRow(row) });
+    res.json({ ok: true, video: videoFromRow(row) });
   } catch (err) {
     res.status(500).json({ ok: false, error: err?.message || String(err) });
   }
@@ -869,42 +862,13 @@ app.get("/api/nguoi-dung-columns", nguoiDungColumnsHandler);
 
 app.post("/api/videos", upload.single("video"), async (req, res) => {
   try {
-    const title = sliceText(
-      getMultipartField(req.body, ["title", "tieu_de", "Tieu_de", "TIEU_DE"]),
-      255
-    );
-    const headerRaw = req.headers["x-video-description"] || req.headers["x-mo-ta"];
-    let headerDesc = "";
-    if (headerRaw) {
-      try {
-        headerDesc = decodeURIComponent(String(headerRaw));
-      } catch {
-        headerDesc = String(headerRaw);
-      }
-    }
-    const qRaw = req.query?.mo_ta ?? req.query?.description;
-    let queryDesc = "";
-    if (qRaw != null && qRaw !== "") {
-      try {
-        queryDesc = decodeURIComponent(String(qRaw));
-      } catch {
-        queryDesc = String(qRaw);
-      }
-    }
-    const description =
-      extractDescriptionFromBody(req.body) ||
-      sliceText(headerDesc, 4000) ||
-      sliceText(queryDesc, 4000);
+    const { title, moTa: description } = readUploadMeta(req);
     // eslint-disable-next-line no-console
     console.log("[upload]", {
       descLen: description.length,
       titleLen: title.length,
-      bodyFieldCount: req.body ? Object.keys(req.body).length : 0,
-      hasQueryMoTa: Boolean(qRaw),
+      metaField: Boolean(getMultipartField(req.body, ["meta"])),
     });
-    if (!description.length && title.length > 0 && req.body && Object.keys(req.body).length > 0) {
-      console.warn("[upload] Có tiêu đề nhưng không đọc được mô tả từ multipart. Keys:", Object.keys(req.body));
-    }
     const rawDuration = Number(getMultipartField(req.body, ["thoi_luong", "Thoi_luong"]));
     const clientDuration =
       Number.isFinite(rawDuration) && rawDuration >= 0 ? Math.trunc(rawDuration) : 0;
@@ -995,9 +959,9 @@ app.post("/api/videos", upload.single("video"), async (req, res) => {
           "SELECT video_id AS Id, tieu_de AS Title, mo_ta AS Description, " +
             "duong_dan_video AS RelativeUrl, ngay_tao AS UploadedAt FROM dbo.video WHERE video_id = @Id"
         );
-      if (refreshed.recordset?.[0]) videoOut = normalizeVideoRow(refreshed.recordset[0]);
+      if (refreshed.recordset?.[0]) videoOut = videoFromRow(refreshed.recordset[0]);
     } else if (videoOut) {
-      videoOut = normalizeVideoRow(videoOut);
+      videoOut = videoFromRow(videoOut);
     }
 
     res.json({ ok: true, video: videoOut });

@@ -214,20 +214,26 @@ async function uploadVideo() {
 
     try {
         const durationSeconds = await getVideoDurationSeconds(file);
+        const titleVal = (titleInput?.value || "").trim();
+        const descVal = (descriptionInput.value || "").trim();
+
         const form = new FormData();
-        form.append("title", titleInput?.value || "");
-        // Gửi mô tả trước file; một số proxy/multer dễ mất field nếu thứ tự sai.
-        const descVal = descriptionInput.value ?? "";
-        form.append("video_description", descVal);
+        // Một field JSON: multer luôn đọc được; không phụ thuộc tên field lạ.
+        form.append(
+            "meta",
+            JSON.stringify({
+                title: titleVal,
+                mo_ta: descVal,
+            })
+        );
+        form.append("title", titleVal);
         form.append("mo_ta", descVal);
-        form.append("description", descVal);
         form.append("thoi_luong", String(durationSeconds));
         if (Number.isFinite(Number(currentUser?.nguoi_dung_id))) {
             form.append("nguoi_dung_id", String(currentUser.nguoi_dung_id));
         }
         form.append("video", file);
 
-        // Thêm ?mo_ta=... vào URL: luôn tới server dù multipart/header bị proxy/CORS làm mất.
         let uploadPath = "/api/videos";
         if (descVal.length > 0) {
             const qs = new URLSearchParams({ mo_ta: descVal }).toString();
@@ -238,9 +244,6 @@ async function uploadVideo() {
         const res = await apiFetch(uploadPath, {
             method: "POST",
             body: form,
-            headers: {
-                "X-Video-Description": encodeURIComponent(descVal || ""),
-            },
         });
         const data = await parseJsonResponse(res);
         if (!res.ok || !data.ok) throw new Error(data.error || "Upload failed");

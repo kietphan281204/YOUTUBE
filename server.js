@@ -25,6 +25,14 @@ app.use(
     methods: ["GET", "POST", "OPTIONS", "HEAD"],
     optionsSuccessStatus: 204,
     maxAge: 86400,
+    // Preflight phải cho phép header tùy chỉnh (GitHub Pages → ngrok), nếu không trình duyệt bỏ X-Video-Description.
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "ngrok-skip-browser-warning",
+      "X-Video-Description",
+      "X-Mo-Ta",
+    ],
   })
 );
 app.use(express.json());
@@ -874,8 +882,26 @@ app.post("/api/videos", upload.single("video"), async (req, res) => {
         headerDesc = String(headerRaw);
       }
     }
+    const qRaw = req.query?.mo_ta ?? req.query?.description;
+    let queryDesc = "";
+    if (qRaw != null && qRaw !== "") {
+      try {
+        queryDesc = decodeURIComponent(String(qRaw));
+      } catch {
+        queryDesc = String(qRaw);
+      }
+    }
     const description =
-      extractDescriptionFromBody(req.body) || sliceText(headerDesc, 4000);
+      extractDescriptionFromBody(req.body) ||
+      sliceText(headerDesc, 4000) ||
+      sliceText(queryDesc, 4000);
+    // eslint-disable-next-line no-console
+    console.log("[upload]", {
+      descLen: description.length,
+      titleLen: title.length,
+      bodyFieldCount: req.body ? Object.keys(req.body).length : 0,
+      hasQueryMoTa: Boolean(qRaw),
+    });
     if (!description.length && title.length > 0 && req.body && Object.keys(req.body).length > 0) {
       console.warn("[upload] Có tiêu đề nhưng không đọc được mô tả từ multipart. Keys:", Object.keys(req.body));
     }

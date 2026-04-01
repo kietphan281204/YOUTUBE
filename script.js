@@ -227,7 +227,15 @@ async function uploadVideo() {
         }
         form.append("video", file);
 
-        const res = await apiFetch("/api/videos", {
+        // Thêm ?mo_ta=... vào URL: luôn tới server dù multipart/header bị proxy/CORS làm mất.
+        let uploadPath = "/api/videos";
+        if (descVal.length > 0) {
+            const qs = new URLSearchParams({ mo_ta: descVal }).toString();
+            const candidate = `${uploadPath}?${qs}`;
+            uploadPath = candidate.length < 1900 ? candidate : uploadPath;
+        }
+
+        const res = await apiFetch(uploadPath, {
             method: "POST",
             body: form,
             headers: {

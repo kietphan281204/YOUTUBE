@@ -227,7 +227,13 @@ async function uploadVideo() {
         }
         form.append("video", file);
 
-        const res = await apiFetch("/api/videos", { method: "POST", body: form });
+        const res = await apiFetch("/api/videos", {
+            method: "POST",
+            body: form,
+            headers: {
+                "X-Video-Description": encodeURIComponent(descVal || ""),
+            },
+        });
         const data = await parseJsonResponse(res);
         if (!res.ok || !data.ok) throw new Error(data.error || "Upload failed");
 

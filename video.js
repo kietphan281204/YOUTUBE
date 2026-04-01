@@ -89,6 +89,18 @@ function escapeHtml(s) {
     return d.innerHTML;
 }
 
+function pickVideoDescription(v) {
+    if (!v || typeof v !== "object") return "";
+    const raw =
+        v.Description ??
+        v.description ??
+        v.mo_ta ??
+        v.MO_TA ??
+        v.mota;
+    if (raw == null || raw === "") return "";
+    return String(raw).trim();
+}
+
 async function loadLikeState(videoId, user) {
     const likeBtn = document.getElementById("likeBtn");
     const likeCount = document.getElementById("likeCount");
@@ -173,7 +185,7 @@ window.addEventListener("DOMContentLoaded", async () => {
         document.getElementById("detailTitle").textContent = v.Title || "Video";
         const descEl = document.getElementById("detailDescription");
         if (descEl) {
-            const d = String(v.Description ?? v.description ?? v.mo_ta ?? "").trim();
+            const d = pickVideoDescription(v);
             descEl.textContent = d || "Chưa có mô tả.";
         }
         const vid = document.getElementById("detailVideo");

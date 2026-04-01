@@ -96,8 +96,34 @@ function getMultipartField(body, keys) {
 
 function sliceText(raw, maxLen) {
   if (raw == null) return "";
+  if (Buffer.isBuffer(raw)) return raw.toString("utf8").trim().slice(0, maxLen);
+  if (Array.isArray(raw)) return sliceText(raw[raw.length - 1], maxLen);
   const s = typeof raw === "string" ? raw : String(raw);
   return s.trim().slice(0, maxLen);
+}
+
+/** Chuẩn hoá 1 dòng video từ SQL — mssql có thể trả key khác chữ hoa, khiến frontend đọc sai Description. */
+function normalizeVideoRow(row) {
+  if (!row || typeof row !== "object") return row;
+  const descRaw =
+    row.Description ??
+    row.description ??
+    row.mo_ta ??
+    row.MO_TA ??
+    row.mota;
+  const desc =
+    descRaw == null || descRaw === ""
+      ? null
+      : sliceText(descRaw, 4000) || null;
+  return {
+    ...row,
+    Id: row.Id ?? row.id ?? row.video_id ?? row.ID,
+    Title: row.Title ?? row.title ?? row.tieu_de,
+    Description: desc,
+    RelativeUrl: row.RelativeUrl ?? row.relativeUrl ?? row.duong_dan_video,
+    LuotXem: row.LuotXem ?? row.luot_xem,
+    UploadedAt: row.UploadedAt ?? row.uploadedAt ?? row.ngay_tao,
+  };
 }
 
 /**
@@ -599,7 +625,7 @@ app.get("/api/videos/:id", async (req, res) => {
       );
     const row = result.recordset?.[0];
     if (!row) return res.status(404).json({ ok: false, error: "Không tìm thấy video." });
-    res.json({ ok: true, video: row });
+    res.json({ ok: true, video: normalizeVideoRow(row) });
   } catch (err) {
     res.status(500).json({ ok: false, error: err?.message || String(err) });
   }
@@ -839,7 +865,20 @@ app.post("/api/videos", upload.single("video"), async (req, res) => {
       getMultipartField(req.body, ["title", "tieu_de", "Tieu_de", "TIEU_DE"]),
       255
     );
-    const description = extractDescriptionFromBody(req.body);
+    const headerRaw = req.headers["x-video-description"] || req.headers["x-mo-ta"];
+    let headerDesc = "";
+    if (headerRaw) {
+      try {
+        headerDesc = decodeURIComponent(String(headerRaw));
+      } catch {
+        headerDesc = String(headerRaw);
+      }
+    }
+    const description =
+      extractDescriptionFromBody(req.body) || sliceText(headerDesc, 4000);
+    if (!description.length && title.length > 0 && req.body && Object.keys(req.body).length > 0) {
+      console.warn("[upload] Có tiêu đề nhưng không đọc được mô tả từ multipart. Keys:", Object.keys(req.body));
+    }
     const rawDuration = Number(getMultipartField(req.body, ["thoi_luong", "Thoi_luong"]));
     const clientDuration =
       Number.isFinite(rawDuration) && rawDuration >= 0 ? Math.trunc(rawDuration) : 0;
@@ -930,7 +969,9 @@ app.post("/api/videos", upload.single("video"), async (req, res) => {
           "SELECT video_id AS Id, tieu_de AS Title, mo_ta AS Description, " +
             "duong_dan_video AS RelativeUrl, ngay_tao AS UploadedAt FROM dbo.video WHERE video_id = @Id"
         );
-      if (refreshed.recordset?.[0]) videoOut = refreshed.recordset[0];
+      if (refreshed.recordset?.[0]) videoOut = normalizeVideoRow(refreshed.recordset[0]);
+    } else if (videoOut) {
+      videoOut = normalizeVideoRow(videoOut);
     }
 
     res.json({ ok: true, video: videoOut });

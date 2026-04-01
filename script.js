@@ -81,6 +81,13 @@ function updateUploadAccess() {
     if (uploadBtn) uploadBtn.disabled = !canUpload;
 }
 
+function pickVideoDescription(v) {
+    if (!v || typeof v !== "object") return "";
+    const raw = v.Description ?? v.description ?? v.mo_ta ?? v.MO_TA ?? v.mota;
+    if (raw == null || String(raw).trim() === "") return "";
+    return String(raw).trim();
+}
+
 function renderVideoCard(v) {
     const card = document.createElement("div");
     card.className = "videoCard";
@@ -91,6 +98,14 @@ function renderVideoCard(v) {
     title.className = "videoTitle";
     title.textContent = v.Title || v.FileName || "Video";
 
+    const descriptionText = pickVideoDescription(v);
+    let description = null;
+    if (descriptionText) {
+        description = document.createElement("div");
+        description.className = "videoDescription";
+        description.textContent = descriptionText;
+    }
+
     const video = document.createElement("video");
     // If frontend and backend are different origins, RelativeUrl is like "/uploads/.."
     // so we must prefix it with API_BASE.
@@ -100,7 +115,13 @@ function renderVideoCard(v) {
 
     const meta = document.createElement("div");
     meta.className = "videoMeta";
-    meta.textContent = v.UploadedAt ? new Date(v.UploadedAt).toLocaleString() : "";
+    let metaLine = v.UploadedAt ? new Date(v.UploadedAt).toLocaleString() : "";
+    if (v.SoLike != null && v.SoBinhLuan != null && v.LuotXem != null) {
+        metaLine +=
+            (metaLine ? " · " : "") +
+            `${v.LuotXem} lượt xem · ${v.SoLike} thích · ${v.SoBinhLuan} BL`;
+    }
+    meta.textContent = metaLine;
 
     const id = v.Id ?? v.id;
     card.addEventListener("click", () => {
@@ -108,6 +129,7 @@ function renderVideoCard(v) {
     });
 
     card.appendChild(title);
+    if (description) card.appendChild(description);
     card.appendChild(video);
     card.appendChild(meta);
     return card;
@@ -145,6 +167,43 @@ async function loadVideos() {
         }
     } catch (e) {
         setStatus(`Không tải được danh sách video: ${e.message}`, true);
+    }
+}
+
+function setTrendingStatus(msg, isError = false) {
+    const el = document.getElementById("trendingStatus");
+    if (!el) return;
+    el.textContent = msg || "";
+    el.style.color = isError ? "#b00020" : "#555";
+    el.style.fontSize = "13px";
+}
+
+async function loadTrendingVideos() {
+    const container = document.getElementById("trendingContainer");
+    if (!container) return;
+    try {
+        const res = await apiFetch("/api/videos/trending");
+        const data = await parseJsonResponse(res);
+        if (!res.ok || !data.ok) throw new Error(data.error || "Trending failed");
+        const videos = Array.isArray(data.videos) ? data.videos : [];
+        const c = data.criteria;
+        container.innerHTML = "";
+        if (!videos.length) {
+            setTrendingStatus(
+                `Chưa có video đạt điều kiện (${c.minViews} lượt xem, ${c.minLikes} thích, ${c.minComments} bình luận).`,
+                false
+            );
+            return;
+        }
+        setTrendingStatus(
+            `Điều kiện: ≥${c.minViews} lượt xem, ≥${c.minLikes} thích, ≥${c.minComments} bình luận.`,
+            false
+        );
+        for (const v of videos) {
+            container.appendChild(renderVideoCard(v));
+        }
+    } catch (e) {
+        setTrendingStatus(`Không tải video xu hướng: ${e.message}`, true);
     }
 }
 
@@ -266,5 +325,6 @@ window.addEventListener("DOMContentLoaded", () => {
     }
     currentUser = loadCurrentUser();
     renderCurrentUser();
+    loadTrendingVideos();
     loadVideos();
 });

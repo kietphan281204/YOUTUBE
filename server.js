@@ -391,6 +391,51 @@ app.get("/api/videos", async (_req, res) => {
   }
 });
 
+/**
+ * Video xu hướng: đủ điều kiện like / bình luận / lượt xem (mặc định 3 / 3 / 5).
+ * Phải khai báo TRƯỚC route /api/videos/:id để không bị coi id = "trending".
+ */
+app.get("/api/videos/trending", async (req, res) => {
+  try {
+    const minViews = Math.min(1000000, Math.max(0, Math.trunc(Number(req.query.minViews ?? 5)) || 5));
+    const minLikes = Math.min(100000, Math.max(0, Math.trunc(Number(req.query.minLikes ?? 3)) || 3));
+    const minComments = Math.min(100000, Math.max(0, Math.trunc(Number(req.query.minComments ?? 3)) || 3));
+    const pool = await sql.connect(sqlConfig);
+    const result = await pool
+      .request()
+      .input("MinViews", sql.BigInt, minViews)
+      .input("MinLikes", sql.Int, minLikes)
+      .input("MinComments", sql.Int, minComments)
+      .query(
+        "SELECT TOP (50) " +
+          "v.video_id AS Id, v.tieu_de AS Title, v.mo_ta AS Description, v.duong_dan_video AS RelativeUrl, " +
+          "v.ngay_tao AS UploadedAt, v.luot_xem AS LuotXem, " +
+          "(SELECT COUNT(*) FROM dbo.luot_thich lt WHERE lt.video_id = v.video_id) AS SoLike, " +
+          "(SELECT COUNT(*) FROM dbo.binh_luan bl WHERE bl.video_id = v.video_id) AS SoBinhLuan " +
+          "FROM dbo.video v " +
+          "WHERE v.luot_xem >= @MinViews " +
+          "AND (SELECT COUNT(*) FROM dbo.luot_thich lt WHERE lt.video_id = v.video_id) >= @MinLikes " +
+          "AND (SELECT COUNT(*) FROM dbo.binh_luan bl WHERE bl.video_id = v.video_id) >= @MinComments " +
+          "ORDER BY v.luot_xem DESC, SoLike DESC, SoBinhLuan DESC"
+      );
+    const rows = (result.recordset || []).map((r) => {
+      const base = videoFromRow(r);
+      return {
+        ...base,
+        SoLike: Number(r.SoLike ?? r.soLike ?? 0),
+        SoBinhLuan: Number(r.SoBinhLuan ?? r.soBinhLuan ?? 0),
+      };
+    });
+    res.json({
+      ok: true,
+      criteria: { minViews, minLikes, minComments },
+      videos: rows,
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err?.message || String(err) });
+  }
+});
+
 app.get("/api/videos/:id", async (req, res) => {
   try {
     const id = Number(req.params.id);

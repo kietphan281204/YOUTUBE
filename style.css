@@ -73,6 +73,26 @@ main {
     font-size: 14px;
 }
 
+.trendingSection {
+    margin-top: 24px;
+    margin-bottom: 28px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #ddd;
+}
+
+.trendingHint {
+    font-size: 13px;
+    color: #555;
+    margin: 0 0 10px;
+}
+
+#trendingContainer {
+    margin-top: 12px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 14px;
+}
+
 #videoContainer {
     margin-top: 15px;
     display: grid;

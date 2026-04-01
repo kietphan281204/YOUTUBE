@@ -68,3 +68,19 @@ BEGIN
   ADD luot_xem INT NOT NULL CONSTRAINT DF_nguoi_xem_luot_xem DEFAULT (0);
 END
 GO
+
+-- ========== Tuỳ chọn: bảng snapshot "video xu hướng" ==========
+-- API GET /api/videos/trending hiện **tính trực tiếp** từ video + luot_thich + binh_luan (không bắt buộc bảng này).
+-- Bạn có thể dùng bảng này để: báo cáo, job đồng bộ định kỳ, hoặc hiển thị nhanh sau khi MERGE.
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'dbo.video_xu_huong') AND type in (N'U'))
+BEGIN
+  CREATE TABLE dbo.video_xu_huong (
+    video_id INT NOT NULL PRIMARY KEY,
+    so_like INT NOT NULL,
+    so_binh_luan INT NOT NULL,
+    luot_xem BIGINT NOT NULL,
+    ngay_vao DATETIME NOT NULL DEFAULT GETDATE(),
+    CONSTRAINT FK_video_xu_huong_video FOREIGN KEY (video_id) REFERENCES dbo.video(video_id) ON DELETE CASCADE
+  );
+END
+GO

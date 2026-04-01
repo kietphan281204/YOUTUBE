@@ -183,10 +183,17 @@ async function loadTrendingVideos() {
     if (!container) return;
     try {
         const res = await apiFetch("/api/videos/trending");
+        if (res.status === 404) {
+            setTrendingStatus(
+                "API chưa có /api/videos/trending (404). git pull → npm run dev → cập nhật ngrok + config.js.",
+                true
+            );
+            return;
+        }
         const data = await parseJsonResponse(res);
         if (!res.ok || !data.ok) throw new Error(data.error || "Trending failed");
         const videos = Array.isArray(data.videos) ? data.videos : [];
-        const c = data.criteria;
+        const c = data.criteria || { minViews: 5, minLikes: 3, minComments: 3 };
         container.innerHTML = "";
         if (!videos.length) {
             setTrendingStatus(

@@ -69,20 +69,40 @@ BEGIN
 END
 GO
 
--- ========== Tuỳ chọn: bảng snapshot "video xu hướng" ==========
--- API GET /api/videos/trending hiện **tính trực tiếp** từ video + luot_thich + binh_luan (không bắt buộc bảng này).
--- Bạn có thể dùng bảng này để: báo cáo, job đồng bộ định kỳ, hoặc hiển thị nhanh sau khi MERGE.
-IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'dbo.video_xu_huong') AND type in (N'U'))
+-- ========== BẢNG / VIEW THẬT: TÍNH NĂNG TRENDING TỰ ĐỘNG BẰNG SQL ==========
+-- 1. Nếu trước đây lỡ tạo table, ta DROP đi để chuyển thành VIEW
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'dbo.video_xu_huong') AND type in (N'U'))
 BEGIN
-  CREATE TABLE dbo.video_xu_huong (
-    video_id INT NOT NULL PRIMARY KEY,
-    so_like INT NOT NULL,
-    so_binh_luan INT NOT NULL,
-    luot_xem BIGINT NOT NULL,
-    ngay_vao DATETIME NOT NULL DEFAULT GETDATE(),
-    CONSTRAINT FK_video_xu_huong_video FOREIGN KEY (video_id) REFERENCES dbo.video(video_id) ON DELETE CASCADE
-  );
+  DROP TABLE dbo.video_xu_huong;
 END
+GO
+
+-- 2. Xoá VIEW cũ nếu đã có
+IF EXISTS (SELECT * FROM sys.views WHERE object_id = OBJECT_ID(N'dbo.video_xu_huong'))
+BEGIN
+  DROP VIEW dbo.video_xu_huong;
+END
+GO
+
+-- 3. Tạo thuật toán tự động tính toán trực tiếp điểm xu hướng
+CREATE VIEW dbo.video_xu_huong AS
+SELECT 
+    v.video_id,
+    v.tieu_de,
+    v.mo_ta,
+    v.duong_dan_video,
+    v.ngay_tao,
+    ISNULL(v.luot_xem, 0) AS luot_xem,
+    ISNULL(lc.cnt, 0) AS so_like,
+    ISNULL(cc.cnt, 0) AS so_binh_luan,
+    -- Điểm xu hướng: 1 lượt xem = 1 điểm, 1 thích = 5 điểm, 1 bình luận = 10 điểm
+    (ISNULL(v.luot_xem, 0) * 1 + ISNULL(lc.cnt, 0) * 5 + ISNULL(cc.cnt, 0) * 10) AS diem_xu_huong
+FROM dbo.video v
+LEFT JOIN (SELECT video_id, COUNT(*) AS cnt FROM dbo.luot_thich GROUP BY video_id) lc 
+  ON lc.video_id = v.video_id
+LEFT JOIN (SELECT video_id, COUNT(*) AS cnt FROM dbo.binh_luan GROUP BY video_id) cc 
+  ON cc.video_id = v.video_id
+WHERE (ISNULL(v.luot_xem, 0) * 1 + ISNULL(lc.cnt, 0) * 5 + ISNULL(cc.cnt, 0) * 10) >= 50;
 GO
 
 -- ========== BẢNG THẬT: TÍNH NĂNG LỊCH SỬ ĐĂNG VIDEO CỦA NGƯỜI DÙNG ==========

@@ -416,29 +416,16 @@ app.get("/api/videos/history/:userId", async (req, res) => {
  * Phải khai báo TRƯỚC route /api/videos/:id để không bị coi id = "trending".
  */
 async function fetchTrendingVideos(req) {
-  const minViews = Math.min(1000000, Math.max(0, Math.trunc(Number(req.query.minViews ?? 5)) || 5));
-  const minLikes = Math.min(100000, Math.max(0, Math.trunc(Number(req.query.minLikes ?? 3)) || 3));
-  const minComments = Math.min(100000, Math.max(0, Math.trunc(Number(req.query.minComments ?? 3)) || 3));
   const pool = await sql.connect(sqlConfig);
   const result = await pool
     .request()
-    .input("MinViews", sql.Int, minViews)
-    .input("MinLikes", sql.Int, minLikes)
-    .input("MinComments", sql.Int, minComments)
     .query(
       "SELECT TOP (50) " +
-        "v.video_id AS Id, v.tieu_de AS Title, v.mo_ta AS Description, v.duong_dan_video AS RelativeUrl, " +
-        "v.ngay_tao AS UploadedAt, ISNULL(v.luot_xem, 0) AS LuotXem, " +
-        "ISNULL(lc.cnt, 0) AS SoLike, ISNULL(cc.cnt, 0) AS SoBinhLuan " +
-        "FROM dbo.video v " +
-        "LEFT JOIN (SELECT video_id, COUNT(*) AS cnt FROM dbo.luot_thich GROUP BY video_id) lc " +
-        "  ON lc.video_id = v.video_id " +
-        "LEFT JOIN (SELECT video_id, COUNT(*) AS cnt FROM dbo.binh_luan GROUP BY video_id) cc " +
-        "  ON cc.video_id = v.video_id " +
-        "WHERE ISNULL(v.luot_xem, 0) >= @MinViews " +
-        "AND ISNULL(lc.cnt, 0) >= @MinLikes " +
-        "AND ISNULL(cc.cnt, 0) >= @MinComments " +
-        "ORDER BY ISNULL(v.luot_xem, 0) DESC, ISNULL(lc.cnt, 0) DESC, ISNULL(cc.cnt, 0) DESC"
+        "video_id AS Id, tieu_de AS Title, mo_ta AS Description, duong_dan_video AS RelativeUrl, " +
+        "ngay_tao AS UploadedAt, luot_xem AS LuotXem, " +
+        "so_like AS SoLike, so_binh_luan AS SoBinhLuan, diem_xu_huong AS DiemXuHuong " +
+        "FROM dbo.video_xu_huong " +
+        "ORDER BY diem_xu_huong DESC"
     );
   const rows = (result.recordset || []).map((r) => {
     const base = videoFromRow(r);
@@ -446,15 +433,16 @@ async function fetchTrendingVideos(req) {
       ...base,
       SoLike: Number(r.SoLike ?? r.soLike ?? 0),
       SoBinhLuan: Number(r.SoBinhLuan ?? r.soBinhLuan ?? 0),
+      DiemXuHuong: Number(r.DiemXuHuong ?? r.diemXuHuong ?? 0),
     };
   });
-  return { minViews, minLikes, minComments, rows };
+  return { rows };
 }
 
 app.get("/api/videos/trending", async (req, res) => {
   try {
-    const { minViews, minLikes, minComments, rows } = await fetchTrendingVideos(req);
-    res.json({ ok: true, criteria: { minViews, minLikes, minComments }, videos: rows });
+    const { rows } = await fetchTrendingVideos(req);
+    res.json({ ok: true, videos: rows });
   } catch (err) {
     res.status(500).json({ ok: false, error: err?.message || String(err) });
   }
@@ -463,8 +451,8 @@ app.get("/api/videos/trending", async (req, res) => {
 app.get("/api/videos/:id", async (req, res) => {
   if (String(req.params.id).toLowerCase() === "trending") {
     try {
-      const { minViews, minLikes, minComments, rows } = await fetchTrendingVideos(req);
-      return res.json({ ok: true, criteria: { minViews, minLikes, minComments }, videos: rows });
+      const { rows } = await fetchTrendingVideos(req);
+      return res.json({ ok: true, videos: rows });
     } catch (err) {
       return res.status(500).json({ ok: false, error: err?.message || String(err) });
     }

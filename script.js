@@ -200,17 +200,15 @@ async function loadTrendingVideos() {
         const data = await parseJsonResponse(res);
         if (!res.ok || !data.ok) throw new Error(data.error || "Trending failed");
         const videos = Array.isArray(data.videos) ? data.videos : [];
-        const c = data.criteria || { minViews: 5, minLikes: 3, minComments: 3 };
-        container.innerHTML = "";
         if (!videos.length) {
             setTrendingStatus(
-                `Chưa có video đạt điều kiện (${c.minViews} lượt xem, ${c.minLikes} thích, ${c.minComments} bình luận).`,
+                `Chưa có video nào đạt đủ mốc 50 điểm Xu Hướng.`,
                 false
             );
             return;
         }
         setTrendingStatus(
-            `Điều kiện: ≥${c.minViews} lượt xem, ≥${c.minLikes} thích, ≥${c.minComments} bình luận.`,
+            `Xếp hạng dựa trên Điểm Xu Hướng trực tiếp.`,
             false
         );
         for (const v of videos) {

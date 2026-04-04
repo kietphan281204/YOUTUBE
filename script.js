@@ -86,6 +86,8 @@ function updateUploadAccess() {
     if (uploadBtn) uploadBtn.disabled = !canUpload;
     const historyBtn = document.getElementById("historyBtn");
     if (historyBtn) historyBtn.style.display = canUpload ? "inline-block" : "none";
+    const uploadPageBtn = document.getElementById("uploadPageBtn");
+    if (uploadPageBtn) uploadPageBtn.style.display = canUpload ? "inline-block" : "none";
 }
 
 function pickVideoDescription(v) {
@@ -443,12 +445,12 @@ async function uploadVideo() {
         if (!res.ok || !data.ok) throw new Error(data.error || "Upload failed");
 
         const card = renderVideoCard(data.video);
-        container.prepend(card);
+        if (container) container.prepend(card);
 
         input.value = "";
         if (titleInput) titleInput.value = "";
         if (descriptionInput) descriptionInput.value = "";
-        setStatus("Đăng video thành công (đã lưu SQL).", false);
+        setStatus("Đăng video thành công. Trở lại Trang Chủ để xem!", false);
         if (typeof loadHistoryVideos === "function") loadHistoryVideos();
     } catch (e) {
         setStatus(`Đăng video thất bại: ${e.message}`, true);

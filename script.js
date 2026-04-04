@@ -160,15 +160,63 @@ async function parseJsonResponse(res) {
     }
 }
 
-async function loadVideos() {
+let currentCategoryId = null;
+
+async function filterByCategory(id, element) {
+    document.querySelectorAll(".category-btn").forEach(b => b.classList.remove("active"));
+    if (element) element.classList.add("active");
+    currentCategoryId = id;
+    
+    document.getElementById("feedTitle").textContent = id ? `Video trong danh mục` : `Video mới`;
+    await loadVideos(id);
+}
+
+async function loadCategories() {
     try {
-        const res = await apiFetch("/api/videos");
+        const res = await apiFetch("/api/categories");
+        const data = await parseJsonResponse(res);
+        if (res.ok && data.ok && Array.isArray(data.categories)) {
+            const select = document.getElementById("categoryInput");
+            const filterBar = document.getElementById("categoryFilterBar");
+            
+            data.categories.forEach(c => {
+                if (select) {
+                    const opt = document.createElement("option");
+                    opt.value = c.danh_muc_id;
+                    opt.textContent = c.ten_danh_muc;
+                    select.appendChild(opt);
+                }
+                if (filterBar) {
+                    const btn = document.createElement("button");
+                    btn.className = "category-btn";
+                    btn.textContent = c.ten_danh_muc;
+                    btn.onclick = () => filterByCategory(c.danh_muc_id, btn);
+                    filterBar.appendChild(btn);
+                }
+            });
+        }
+    } catch (e) {
+        console.warn("Lỗi load categories", e);
+    }
+}
+
+async function loadVideos(categoryId = null) {
+    try {
+        let url = "/api/videos";
+        if (categoryId) url += "?categoryId=" + encodeURIComponent(categoryId);
+        const res = await apiFetch(url);
         const data = await parseJsonResponse(res);
         if (!data.ok) throw new Error(data.error || "Load failed");
         const videos = Array.isArray(data.videos) ? data.videos : [];
 
         const container = document.getElementById("videoContainer");
         container.innerHTML = "";
+        
+        if (!videos.length) {
+            container.innerHTML = "<p>Khám phá chưa có video ở danh mục này.</p>";
+            return;
+        }
+
         for (const v of videos) {
             container.appendChild(renderVideoCard(v));
         }
@@ -314,6 +362,7 @@ async function uploadVideo() {
         const durationSeconds = await getVideoDurationSeconds(file);
         const titleVal = (titleInput?.value || "").trim();
         const descVal = (descriptionInput.value || "").trim();
+        const categoryVal = document.getElementById("categoryInput")?.value;
 
         const form = new FormData();
         // Một field JSON: multer luôn đọc được; không phụ thuộc tên field lạ.
@@ -326,6 +375,7 @@ async function uploadVideo() {
         );
         form.append("title", titleVal);
         form.append("mo_ta", descVal);
+        if (categoryVal) form.append("categoryId", categoryVal);
         form.append("thoi_luong", String(durationSeconds));
         if (Number.isFinite(Number(currentUser?.nguoi_dung_id))) {
             form.append("nguoi_dung_id", String(currentUser.nguoi_dung_id));
@@ -365,6 +415,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }
     currentUser = loadCurrentUser();
     renderCurrentUser();
+    loadCategories();
     loadTrendingVideos();
     loadVideos();
 });

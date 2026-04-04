@@ -376,15 +376,28 @@ app.post("/api/auth/login", async (req, res) => {
   }
 });
 
-app.get("/api/videos", async (_req, res) => {
+app.get("/api/categories", async (_req, res) => {
   try {
     const pool = await sql.connect(sqlConfig);
-    const result = await pool
-      .request()
-      .query(
-        // DB VIDEO1 — bảng dbo.video
-        "SELECT TOP (100) video_id AS Id, tieu_de AS Title, duong_dan_video AS RelativeUrl, ngay_tao AS UploadedAt FROM dbo.video ORDER BY video_id DESC"
-      );
+    const result = await pool.request().query("SELECT danh_muc_id, ten_danh_muc FROM dbo.danh_muc ORDER BY danh_muc_id ASC");
+    res.json({ ok: true, categories: result.recordset || [] });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err?.message || String(err) });
+  }
+});
+
+app.get("/api/videos", async (req, res) => {
+  try {
+    const catId = Number(req.query.categoryId);
+    const pool = await sql.connect(sqlConfig);
+    const request = pool.request();
+    let q = "SELECT TOP (100) video_id AS Id, tieu_de AS Title, duong_dan_video AS RelativeUrl, ngay_tao AS UploadedAt FROM dbo.video";
+    if (Number.isFinite(catId) && catId > 0) {
+      q += " WHERE danh_muc_id = @CatId";
+      request.input("CatId", sql.Int, catId);
+    }
+    q += " ORDER BY video_id DESC";
+    const result = await request.query(q);
     res.json({ ok: true, videos: result.recordset || [] });
   } catch (err) {
     res.status(500).json({ ok: false, error: err?.message || String(err) });
@@ -1002,6 +1015,9 @@ app.post("/api/videos", upload.single("video"), async (req, res) => {
       if (exists.recordset?.length) ownerId = wantId;
     }
 
+    const danhMucIdRaw = getMultipartField(req.body, ["danh_muc_id", "categoryId"]);
+    const danhMucId = (Number.isFinite(Number(danhMucIdRaw)) && Number(danhMucIdRaw) > 0) ? Number(danhMucIdRaw) : null;
+
     const insert = await pool
       .request()
       .input("NguoiDungId", sql.Int, Math.trunc(ownerId))
@@ -1009,11 +1025,11 @@ app.post("/api/videos", upload.single("video"), async (req, res) => {
       .input("Description", sql.NVarChar(sql.MAX), description)
       .input("Duration", sql.Int, durationSeconds)
       .input("Path", sql.NVarChar(500), relativeUrl)
+      .input("DanhMucId", sql.Int, danhMucId)
       .query(
-        // Khớp Design VIDEO1.dbo.video: mo_ta/danh_muc_id/tag_id nullable; luot_xem bigint NOT NULL
         "INSERT INTO dbo.video (nguoi_dung_id, tieu_de, mo_ta, duong_dan_video, duong_dan_anh_bia, thoi_luong, luot_xem, ngay_tao, ngay_cap_nhat, danh_muc_id, tag_id) " +
           "OUTPUT INSERTED.video_id AS Id, INSERTED.tieu_de AS Title, INSERTED.mo_ta AS Description, INSERTED.duong_dan_video AS RelativeUrl, INSERTED.ngay_tao AS UploadedAt " +
-          "VALUES (@NguoiDungId, @Title, NULLIF(@Description, N''), @Path, @Path, @Duration, CAST(0 AS BIGINT), GETDATE(), GETDATE(), NULL, NULL)"
+          "VALUES (@NguoiDungId, @Title, NULLIF(@Description, N''), @Path, @Path, @Duration, CAST(0 AS BIGINT), GETDATE(), GETDATE(), @DanhMucId, NULL)"
       );
 
     const newId = Number(insert.recordset?.[0]?.Id);

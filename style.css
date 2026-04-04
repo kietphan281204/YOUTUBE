@@ -232,3 +232,29 @@ main {
     font-size: 13px;
     margin-top: 8px;
 }
+
+.category-filter-bar {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    margin-top: 10px;
+}
+
+.category-btn {
+    background: #e0e0e0;
+    color: #333;
+    border-radius: 20px;
+    padding: 6px 16px;
+    white-space: nowrap;
+    border: 1px solid transparent;
+}
+
+.category-btn:hover {
+    background: #d5d5d5;
+}
+
+.category-btn.active {
+    background: #000;
+    color: #fff;
+}

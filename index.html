@@ -26,6 +26,9 @@
 
         <input type="text" id="titleInput" placeholder="Tiêu đề (tuỳ chọn)"
             style="padding:8px;width:min(520px,100%);margin-bottom:10px;">
+        <select id="categoryInput" style="padding:8px;width:min(520px,100%);margin-bottom:10px;display:block;">
+            <option value="">-- Chọn danh mục (Tuỳ chọn) --</option>
+        </select>
         <div style="font-size:13px;color:#444;margin-bottom:6px;">Mô tả video</div>
         <textarea id="descriptionInput" name="mo_ta" placeholder="Mô tả video (tuỳ chọn)" rows="3"
             style="padding:8px;width:min(520px,100%);margin-bottom:10px;display:block;"></textarea>
@@ -40,7 +43,10 @@
             <div id="trendingContainer"></div>
         </div>
 
-        <h2>Video mới</h2>
+        <div id="categoryFilterBar" class="category-filter-bar">
+            <button class="category-btn active" onclick="filterByCategory(null, this)">Tất cả</button>
+        </div>
+        <h2 id="feedTitle" style="margin-top:16px;">Video mới</h2>
         <div id="videoContainer"></div>
     </main>
 

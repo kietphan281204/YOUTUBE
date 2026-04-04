@@ -85,22 +85,51 @@ BEGIN
 END
 GO
 
--- ========== VIEW: TÍNH NĂNG LỊCH SỬ ĐĂNG VIDEO CỦA NGƯỜI DÙNG ==========
--- Để lấy lịch sử video đã đăng của 1 người, ta chỉ cần truy vấn từ bảng dbo.video
--- vì bảng này đã có lưu nguoi_dung_id. Thêm View này để dễ dàng Select.
-IF NOT EXISTS (SELECT * FROM sys.views WHERE object_id = OBJECT_ID(N'dbo.lich_su_dang_video'))
+-- ========== BẢNG THẬT: TÍNH NĂNG LỊCH SỬ ĐĂNG VIDEO CỦA NGƯỜI DÙNG ==========
+-- Xoá View cũ nếu bạn đã lỡ tạo trước đó
+IF EXISTS (SELECT * FROM sys.views WHERE object_id = OBJECT_ID(N'dbo.lich_su_dang_video'))
+BEGIN
+  DROP VIEW dbo.lich_su_dang_video;
+END
+GO
+
+-- 1. Tạo Bảng Thật
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE object_id = OBJECT_ID(N'dbo.lich_su_dang_video'))
+BEGIN
+  CREATE TABLE dbo.lich_su_dang_video (
+      id INT IDENTITY(1,1) PRIMARY KEY,
+      video_id INT,
+      nguoi_dung_id INT,
+      tieu_de NVARCHAR(255),
+      mo_ta NVARCHAR(MAX),
+      video_url NVARCHAR(MAX),
+      luot_xem BIGINT DEFAULT 0,
+      thoi_gian_dang DATETIME DEFAULT GETDATE(),
+      CONSTRAINT FK_history_video FOREIGN KEY (video_id) REFERENCES dbo.video(video_id) ON DELETE CASCADE
+  );
+END
+GO
+
+-- 2. Chép toàn bộ video cũ đang có sẵn sang bảng lịch sử (để xem lại được ngay)
+INSERT INTO dbo.lich_su_dang_video (video_id, nguoi_dung_id, tieu_de, mo_ta, video_url, luot_xem, thoi_gian_dang)
+SELECT video_id, nguoi_dung_id, tieu_de, mo_ta, duong_dan_video, luot_xem, ngay_tao
+FROM dbo.video
+WHERE video_id NOT IN (SELECT video_id FROM dbo.lich_su_dang_video);
+GO
+
+-- 3. Tạo Trigger: Mỗi khi ai đó đăng Video mới vào bảng dbo.video, tự động copy 1 dòng vào bảng dbo.lich_su_dang_video
+IF NOT EXISTS (SELECT * FROM sys.triggers WHERE name = 'trg_ThemLichSuVideo')
 BEGIN
   EXEC(N'
-  CREATE VIEW dbo.lich_su_dang_video AS
-  SELECT 
-    v.video_id,
-    v.nguoi_dung_id,
-    v.tieu_de,
-    v.mo_ta,
-    v.duong_dan_video AS video_url,
-    v.luot_xem,
-    v.ngay_tao AS thoi_gian_dang
-  FROM dbo.video v
+  CREATE TRIGGER trg_ThemLichSuVideo
+  ON dbo.video
+  AFTER INSERT
+  AS
+  BEGIN
+      INSERT INTO dbo.lich_su_dang_video (video_id, nguoi_dung_id, tieu_de, mo_ta, video_url, luot_xem, thoi_gian_dang)
+      SELECT video_id, nguoi_dung_id, tieu_de, mo_ta, duong_dan_video, luot_xem, ngay_tao
+      FROM INSERTED;
+  END
   ');
 END
 GO

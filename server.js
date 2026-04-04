@@ -402,7 +402,7 @@ app.get("/api/videos/history/:userId", async (req, res) => {
       .request()
       .input("Uid", sql.Int, userId)
       .query(
-        "SELECT video_id AS Id, tieu_de AS Title, mo_ta AS Description, duong_dan_video AS RelativeUrl, luot_xem AS LuotXem, ngay_tao AS UploadedAt FROM dbo.video WHERE nguoi_dung_id = @Uid ORDER BY video_id DESC"
+        "SELECT video_id AS Id, tieu_de AS Title, mo_ta AS Description, video_url AS RelativeUrl, luot_xem AS LuotXem, thoi_gian_dang AS UploadedAt FROM dbo.lich_su_dang_video WHERE nguoi_dung_id = @Uid ORDER BY id DESC"
       );
     const rows = (result.recordset || []).map((r) => videoFromRow(r));
     res.json({ ok: true, videos: rows });

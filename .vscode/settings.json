@@ -1,15 +1,18 @@
 {
-"mssql.connections": [
-  {
-    "id": "LocalSQLExpress",
-    "server": "DESKTOP-C1GBK5B\\SQLEXPRESS",
-    "database": "master",
-    "authenticationType": "SqlLogin",
-    "user": "sa",
-    "password": "",
-    "savePassword": true,
-    "profileName": "Local SQL Express",
-    "groupId": "ROOT"
-  }
-]
+  "mssql.connections": [
+    {
+      "id": "LocalSQLExpress",
+      "server": "DESKTOP-C1GBK5B\\SQLEXPRESS",
+      "database": "master",
+      "authenticationType": "SqlLogin",
+      "user": "sa",
+      "password": "",
+      "savePassword": true,
+      "profileName": "Local SQL Express",
+      "groupId": "ROOT",
+      "profileSource": 0,
+      "encrypt": "Mandatory",
+      "trustServerCertificate": true
+    }
+  ]
 }

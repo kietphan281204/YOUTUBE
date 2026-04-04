@@ -84,3 +84,23 @@ BEGIN
   );
 END
 GO
+
+-- ========== VIEW: TÍNH NĂNG LỊCH SỬ ĐĂNG VIDEO CỦA NGƯỜI DÙNG ==========
+-- Để lấy lịch sử video đã đăng của 1 người, ta chỉ cần truy vấn từ bảng dbo.video
+-- vì bảng này đã có lưu nguoi_dung_id. Thêm View này để dễ dàng Select.
+IF NOT EXISTS (SELECT * FROM sys.views WHERE object_id = OBJECT_ID(N'dbo.lich_su_dang_video'))
+BEGIN
+  EXEC(N'
+  CREATE VIEW dbo.lich_su_dang_video AS
+  SELECT 
+    v.video_id,
+    v.nguoi_dung_id,
+    v.tieu_de,
+    v.mo_ta,
+    v.duong_dan_video AS video_url,
+    v.luot_xem,
+    v.ngay_tao AS thoi_gian_dang
+  FROM dbo.video v
+  ');
+END
+GO

@@ -89,14 +89,14 @@ main {
 #trendingContainer {
     margin-top: 12px;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: 14px;
 }
 
 #videoContainer {
     margin-top: 15px;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: 14px;
 }
 
@@ -148,6 +148,8 @@ main {
 
 .videoCard video {
     width: 100%;
+    aspect-ratio: 16 / 9;
+    background: #000;
     border-radius: 8px;
     display: block;
 }

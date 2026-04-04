@@ -182,7 +182,12 @@ window.addEventListener("DOMContentLoaded", async () => {
         const descEl = document.getElementById("detailDescription");
         if (descEl) {
             const d = pickVideoDescription(v);
-            descEl.textContent = d || "Chưa có mô tả.";
+            if (d) {
+                descEl.textContent = d;
+                descEl.style.display = "block";
+            } else {
+                descEl.style.display = "none";
+            }
         }
         const vid = document.getElementById("detailVideo");
         vid.src = apiUrl(v.RelativeUrl);

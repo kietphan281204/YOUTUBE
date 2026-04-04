@@ -68,17 +68,24 @@ function renderCurrentUser() {
         );
         setStatus("", false);
         updateUploadAccess();
+        if (typeof loadHistoryVideos === "function") loadHistoryVideos();
         return;
     }
     setAuthStatus("Chưa đăng nhập. Vui lòng vào trang Đăng nhập trước khi đăng video.", true);
     setStatus("Bạn cần đăng nhập để đăng video.", true);
     updateUploadAccess();
+    const historyAuthWarning = document.getElementById("historyAuthWarning");
+    if (historyAuthWarning) historyAuthWarning.style.display = "block";
+    const historyContainer = document.getElementById("historyContainer");
+    if (historyContainer) historyContainer.innerHTML = "";
 }
 
 function updateUploadAccess() {
     const uploadBtn = document.getElementById("uploadBtn");
     const canUpload = Boolean(currentUser?.nguoi_dung_id);
     if (uploadBtn) uploadBtn.disabled = !canUpload;
+    const historyBtn = document.getElementById("historyBtn");
+    if (historyBtn) historyBtn.style.display = canUpload ? "inline-block" : "none";
 }
 
 function pickVideoDescription(v) {
@@ -214,6 +221,33 @@ async function loadTrendingVideos() {
     }
 }
 
+async function loadHistoryVideos() {
+    const container = document.getElementById("historyContainer");
+    const warning = document.getElementById("historyAuthWarning");
+    if (!container) return;
+    if (!currentUser?.nguoi_dung_id) {
+        if (warning) warning.style.display = "block";
+        return;
+    }
+    if (warning) warning.style.display = "none";
+    try {
+        const res = await apiFetch(`/api/videos/history/${currentUser.nguoi_dung_id}`);
+        const data = await parseJsonResponse(res);
+        if (!res.ok || !data.ok) throw new Error(data.error || "History failed");
+        const videos = Array.isArray(data.videos) ? data.videos : [];
+        container.innerHTML = "";
+        if (!videos.length) {
+            container.innerHTML = "<p>Trống (bạn chưa đăng video nào).</p>";
+            return;
+        }
+        for (const v of videos) {
+            container.appendChild(renderVideoCard(v));
+        }
+    } catch (e) {
+        container.innerHTML = `<p style="color:#b00020">Lỗi tải lịch sử: ${e.message}</p>`;
+    }
+}
+
 function getVideoDurationSeconds(file) {
     return new Promise((resolve) => {
         try {
@@ -321,6 +355,7 @@ async function uploadVideo() {
         if (titleInput) titleInput.value = "";
         if (descriptionInput) descriptionInput.value = "";
         setStatus("Đăng video thành công (đã lưu SQL).", false);
+        if (typeof loadHistoryVideos === "function") loadHistoryVideos();
     } catch (e) {
         setStatus(`Đăng video thất bại: ${e.message}`, true);
     }

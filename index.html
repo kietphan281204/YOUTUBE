@@ -1,18 +1,21 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
     <meta charset="UTF-8">
     <title>Đăng Video</title>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
-    
+
     <header>
         <h1>Website Video</h1>
         <div class="headerActions">
             <button id="homeBtn">Trang chủ</button>
-            <button id="loginPageBtn">Đăng nhập</button>
+            <button id="historyBtn" onclick="document.getElementById('historySection').scrollIntoView({behavior: 'smooth'})" style="display:none;">Lịch sử video</button>
+            <button id="loginPageBtn">Tài khoản</button>
         </div>
     </header>
 
@@ -21,18 +24,26 @@
 
         <h2>Đăng Video</h2>
 
-        <input type="text" id="titleInput" placeholder="Tiêu đề (tuỳ chọn)" style="padding:8px;width:min(520px,100%);margin-bottom:10px;">
+        <input type="text" id="titleInput" placeholder="Tiêu đề (tuỳ chọn)"
+            style="padding:8px;width:min(520px,100%);margin-bottom:10px;">
         <div style="font-size:13px;color:#444;margin-bottom:6px;">Mô tả video</div>
-        <textarea id="descriptionInput" name="mo_ta" placeholder="Mô tả video (tuỳ chọn)" rows="3" style="padding:8px;width:min(520px,100%);margin-bottom:10px;display:block;"></textarea>
+        <textarea id="descriptionInput" name="mo_ta" placeholder="Mô tả video (tuỳ chọn)" rows="3"
+            style="padding:8px;width:min(520px,100%);margin-bottom:10px;display:block;"></textarea>
         <input type="file" id="videoInput" accept="video/*">
         <button id="uploadBtn" onclick="uploadVideo()">Đăng Video</button>
         <div id="status" style="margin-top:10px;"></div>
 
         <div class="trendingSection">
             <h2>Video xu hướng</h2>
-            <p class="trendingHint">Tối thiểu: 5 lượt xem, 3 thích, 3 bình luận (đổi được trên API).</p>
+            <p class="trendingHint">Tối thiểu: 5 lượt xem, 3 thích, 3 bình luận.</p>
             <div id="trendingStatus"></div>
             <div id="trendingContainer"></div>
+        </div>
+
+        <div class="historySection" id="historySection" style="margin-top: 30px; margin-bottom: 30px;">
+            <h2>Lịch sử Đăng Video</h2>
+            <div id="historyAuthWarning" style="color:#b00020; font-size:14px; margin-bottom: 10px; display:none;">Vui lòng Đăng nhập để xem lại các video bạn đã đăng!</div>
+            <div id="historyContainer"></div>
         </div>
 
         <h2>Video mới</h2>
@@ -42,4 +53,5 @@
     <script src="config.js"></script>
     <script src="script.js"></script>
 </body>
+
 </html>

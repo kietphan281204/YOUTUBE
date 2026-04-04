@@ -14,7 +14,7 @@
         <h1>Website Video</h1>
         <div class="headerActions">
             <button id="homeBtn">Trang chủ</button>
-            <button id="historyBtn" onclick="document.getElementById('historySection').scrollIntoView({behavior: 'smooth'})" style="display:none;">Lịch sử video</button>
+            <button id="historyBtn" onclick="window.location.href='history.html'" style="display:none;">Lịch sử video</button>
             <button id="loginPageBtn">Tài khoản</button>
         </div>
     </header>
@@ -38,12 +38,6 @@
             <p class="trendingHint">Tối thiểu: 5 lượt xem, 3 thích, 3 bình luận.</p>
             <div id="trendingStatus"></div>
             <div id="trendingContainer"></div>
-        </div>
-
-        <div class="historySection" id="historySection" style="margin-top: 30px; margin-bottom: 30px;">
-            <h2>Lịch sử Đăng Video</h2>
-            <div id="historyAuthWarning" style="color:#b00020; font-size:14px; margin-bottom: 10px; display:none;">Vui lòng Đăng nhập để xem lại các video bạn đã đăng!</div>
-            <div id="historyContainer"></div>
         </div>
 
         <h2>Video mới</h2>

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Lịch sử Đăng Video</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <header>
+        <h1 style="cursor:pointer;" onclick="window.location.href='index.html'">Website Video</h1>
+        <div class="headerActions">
+            <button onclick="window.location.href='index.html'">← Quay lại</button>
+            <button id="homeBtn">Trang chủ</button>
+            <button id="loginPageBtn">Tài khoản</button>
+        </div>
+    </header>
+
+    <main>
+        <div id="authStatus"></div>
+
+        <div class="historySection" id="historySection" style="margin-top: 20px; margin-bottom: 30px;">
+            <h2>Lịch sử Đăng Video của bạn</h2>
+            <div id="historyAuthWarning" style="color:#b00020; font-size:14px; margin-bottom: 10px; display:none;">Vui lòng Đăng nhập để xem lại các video bạn đã đăng!</div>
+            <div id="historyContainer"></div>
+        </div>
+
+    </main>
+
+    <script src="config.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>

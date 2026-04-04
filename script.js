@@ -1,7 +1,5 @@
-// Nút trang chủ: mở API diag trong tab mới để kích hoạt ngrok cho thiết bị
 document.getElementById("homeBtn").onclick = function () {
-    const url = apiUrl("/api/diag");
-    window.open(url, "_blank");
+    window.location.href = "index.html";
 };
 document.getElementById("loginPageBtn").onclick = function () {
     window.location.href = "login.html";

@@ -258,3 +258,17 @@ main {
     background: #000;
     color: #fff;
 }
+
+.tag-chip {
+    background: #e9ecef;
+    color: #495057;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.tag-chip:hover {
+    background: #dee2e6;
+}

@@ -200,6 +200,52 @@ async function loadCategories() {
     }
 }
 
+async function onCategoryChange() {
+    const select = document.getElementById("categoryInput");
+    const container = document.getElementById("tagSuggestContainer");
+    const buttonsDiv = document.getElementById("tagButtons");
+    
+    if (!select || !container || !buttonsDiv) return;
+    
+    const catId = select.value;
+    if (!catId) {
+        container.style.display = "none";
+        return;
+    }
+
+    try {
+        const res = await apiFetch(`/api/tags?categoryId=${encodeURIComponent(catId)}`);
+        const data = await parseJsonResponse(res);
+        
+        if (res.ok && data.ok && Array.isArray(data.tags) && data.tags.length > 0) {
+            buttonsDiv.innerHTML = "";
+            data.tags.forEach(t => {
+                const btn = document.createElement("button");
+                btn.className = "tag-chip";
+                btn.textContent = t.ten_tag;
+                btn.type = "button";
+                btn.onclick = (e) => {
+                    e.preventDefault();
+                    const descInput = document.getElementById("descriptionInput");
+                    if (descInput) {
+                        const current = descInput.value;
+                        if (!current.includes(t.ten_tag)) {
+                            descInput.value = current ? current + " " + t.ten_tag : t.ten_tag;
+                        }
+                    }
+                };
+                buttonsDiv.appendChild(btn);
+            });
+            container.style.display = "block";
+        } else {
+            container.style.display = "none";
+        }
+    } catch (e) {
+        console.warn("Lỗi load thẻ tag", e);
+        container.style.display = "none";
+    }
+}
+
 async function loadVideos(categoryId = null) {
     try {
         let url = "/api/videos";

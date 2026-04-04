@@ -26,12 +26,17 @@
 
         <input type="text" id="titleInput" placeholder="Tiêu đề (tuỳ chọn)"
             style="padding:8px;width:min(520px,100%);margin-bottom:10px;">
-        <select id="categoryInput" style="padding:8px;width:min(520px,100%);margin-bottom:10px;display:block;">
+        <select id="categoryInput" style="padding:8px;width:min(520px,100%);margin-bottom:10px;display:block;" onchange="onCategoryChange()">
             <option value="">-- Chọn danh mục (Tuỳ chọn) --</option>
         </select>
         <div style="font-size:13px;color:#444;margin-bottom:6px;">Mô tả video</div>
         <textarea id="descriptionInput" name="mo_ta" placeholder="Mô tả video (tuỳ chọn)" rows="3"
-            style="padding:8px;width:min(520px,100%);margin-bottom:10px;display:block;"></textarea>
+            style="padding:8px;width:min(520px,100%);margin-bottom:6px;display:block;"></textarea>
+        
+        <div id="tagSuggestContainer" style="margin-bottom: 15px; display: none; width:min(520px,100%);">
+            <div style="font-size:12px;color:#666;margin-bottom:6px;">Gợi ý thẻ tag (nhấp để thêm vào mô tả):</div>
+            <div id="tagButtons" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+        </div>
         <input type="file" id="videoInput" accept="video/*">
         <button id="uploadBtn" onclick="uploadVideo()">Đăng Video</button>
         <div id="status" style="margin-top:10px;"></div>

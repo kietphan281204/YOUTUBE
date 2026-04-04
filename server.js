@@ -386,6 +386,24 @@ app.get("/api/categories", async (_req, res) => {
   }
 });
 
+app.get("/api/tags", async (req, res) => {
+  try {
+    const catId = Number(req.query.categoryId);
+    const pool = await sql.connect(sqlConfig);
+    const request = pool.request();
+    let q = "SELECT tag_id, ten_tag FROM dbo.the_tag";
+    if (Number.isFinite(catId) && catId > 0) {
+      q += " WHERE danh_muc_id = @CatId";
+      request.input("CatId", sql.Int, catId);
+    }
+    q += " ORDER BY ten_tag ASC";
+    const result = await request.query(q);
+    res.json({ ok: true, tags: result.recordset || [] });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err?.message || String(err) });
+  }
+});
+
 app.get("/api/videos", async (req, res) => {
   try {
     const catId = Number(req.query.categoryId);
@@ -1027,9 +1045,11 @@ app.post("/api/videos", upload.single("video"), async (req, res) => {
       .input("Path", sql.NVarChar(500), relativeUrl)
       .input("DanhMucId", sql.Int, danhMucId)
       .query(
+        "DECLARE @T TABLE (Id INT, Title NVARCHAR(255), Description NVARCHAR(MAX), RelativeUrl NVARCHAR(500), UploadedAt DATETIME); " +
         "INSERT INTO dbo.video (nguoi_dung_id, tieu_de, mo_ta, duong_dan_video, duong_dan_anh_bia, thoi_luong, luot_xem, ngay_tao, ngay_cap_nhat, danh_muc_id, tag_id) " +
-          "OUTPUT INSERTED.video_id AS Id, INSERTED.tieu_de AS Title, INSERTED.mo_ta AS Description, INSERTED.duong_dan_video AS RelativeUrl, INSERTED.ngay_tao AS UploadedAt " +
-          "VALUES (@NguoiDungId, @Title, NULLIF(@Description, N''), @Path, @Path, @Duration, CAST(0 AS BIGINT), GETDATE(), GETDATE(), @DanhMucId, NULL)"
+          "OUTPUT INSERTED.video_id AS Id, INSERTED.tieu_de AS Title, INSERTED.mo_ta AS Description, INSERTED.duong_dan_video AS RelativeUrl, INSERTED.ngay_tao AS UploadedAt INTO @T " +
+          "VALUES (@NguoiDungId, @Title, NULLIF(@Description, N''), @Path, @Path, @Duration, CAST(0 AS BIGINT), GETDATE(), GETDATE(), @DanhMucId, NULL); " +
+        "SELECT * FROM @T;"
       );
 
     const newId = Number(insert.recordset?.[0]?.Id);

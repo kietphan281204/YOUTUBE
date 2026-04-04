@@ -246,10 +246,42 @@ async function onCategoryChange() {
     }
 }
 
-async function loadVideos(categoryId = null) {
+let currentSearchQuery = "";
+
+async function handleSearch() {
+    const input = document.getElementById("searchInput");
+    if (!input) return;
+    currentSearchQuery = input.value.trim();
+    
+    // Xoá trạng thái danh mục đang chọn
+    document.querySelectorAll(".category-btn").forEach(b => b.classList.remove("active"));
+    currentCategoryId = null;
+
+    const feedTitle = document.getElementById("feedTitle");
+    if (feedTitle) {
+        feedTitle.textContent = currentSearchQuery ? `Kết quả tìm kiếm: "${currentSearchQuery}"` : "Video mới";
+    }
+
+    await loadVideos(null, currentSearchQuery);
+}
+
+// Bắt sự kiện Enter khi gõ tìm kiếm
+window.addEventListener("DOMContentLoaded", () => {
+    const searchInput = document.getElementById("searchInput");
+    if (searchInput) {
+        searchInput.addEventListener("keypress", (e) => {
+            if (e.key === "Enter") handleSearch();
+        });
+    }
+});
+
+async function loadVideos(categoryId = null, query = "") {
     try {
-        let url = "/api/videos";
-        if (categoryId) url += "?categoryId=" + encodeURIComponent(categoryId);
+        let url = "/api/videos?";
+        const params = new URLSearchParams();
+        if (categoryId) params.append("categoryId", categoryId);
+        if (query) params.append("q", query);
+        url += params.toString();
         const res = await apiFetch(url);
         const data = await parseJsonResponse(res);
         if (!data.ok) throw new Error(data.error || "Load failed");

@@ -407,12 +407,17 @@ app.get("/api/tags", async (req, res) => {
 app.get("/api/videos", async (req, res) => {
   try {
     const catId = Number(req.query.categoryId);
+    const searchQuery = String(req.query.q || "").trim();
     const pool = await sql.connect(sqlConfig);
     const request = pool.request();
-    let q = "SELECT TOP (100) video_id AS Id, tieu_de AS Title, duong_dan_video AS RelativeUrl, ngay_tao AS UploadedAt FROM dbo.video";
+    let q = "SELECT TOP (100) video_id AS Id, tieu_de AS Title, duong_dan_video AS RelativeUrl, ngay_tao AS UploadedAt FROM dbo.video WHERE 1=1";
     if (Number.isFinite(catId) && catId > 0) {
-      q += " WHERE danh_muc_id = @CatId";
+      q += " AND danh_muc_id = @CatId";
       request.input("CatId", sql.Int, catId);
+    }
+    if (searchQuery) {
+      q += " AND (tieu_de LIKE @Search OR mo_ta LIKE @Search)";
+      request.input("Search", sql.NVarChar(255), `%${searchQuery}%`);
     }
     q += " ORDER BY video_id DESC";
     const result = await request.query(q);

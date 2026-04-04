@@ -93,6 +93,7 @@ main {
     gap: 14px;
 }
 
+#historyContainer,
 #videoContainer {
     margin-top: 15px;
     display: grid;

@@ -1,1 +1,0 @@
-const sql = require('mssql'); const { sqlConfig } = require('./sql.config.js'); async function run() { try { await sql.connect(sqlConfig); const r = await sql.query('SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME=''lich_su_dang_video'';'); console.log('Exists?', r.recordset); process.exit(0); } catch(e) { console.log(e); process.exit(1); } } run();

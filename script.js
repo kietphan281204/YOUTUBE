@@ -258,6 +258,7 @@ async function loadVideos(categoryId = null) {
         const videos = Array.isArray(data.videos) ? data.videos : [];
 
         const container = document.getElementById("videoContainer");
+        if (!container) return;
         container.innerHTML = "";
         
         if (!videos.length) {

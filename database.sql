@@ -284,36 +284,23 @@ BEGIN
 END
 GO
 
--- ========== THỦ TỤC TÌM KIẾM VIDEO (STORED PROCEDURE) ==========
-IF OBJECT_ID('dbo.sp_tim_kiem_video', 'P') IS NOT NULL
-  DROP PROCEDURE dbo.sp_tim_kiem_video;
+-- ========== VIEW TÌM KIẾM VIDEO ==========
+IF OBJECT_ID('dbo.vw_tim_kiem_video', 'V') IS NOT NULL
+  DROP VIEW dbo.vw_tim_kiem_video;
 GO
 
-CREATE PROCEDURE dbo.sp_tim_kiem_video
-    @CategoryId INT = NULL,
-    @SearchQuery NVARCHAR(255) = NULL
+CREATE VIEW dbo.vw_tim_kiem_video
 AS
-BEGIN
-    SET NOCOUNT ON;
-
-    SELECT TOP (100) 
-        v.video_id AS Id, 
-        v.tieu_de AS Title, 
-        v.mo_ta AS Description, 
-        v.duong_dan_video AS RelativeUrl, 
-        v.ngay_tao AS UploadedAt
-    FROM dbo.video v
-    LEFT JOIN dbo.nguoi_dung u ON v.nguoi_dung_id = u.nguoi_dung_id
-    LEFT JOIN dbo.danh_muc d ON v.danh_muc_id = d.danh_muc_id
-    WHERE 
-        (@CategoryId IS NULL OR v.danh_muc_id = @CategoryId)
-        AND (
-            @SearchQuery IS NULL 
-            OR v.tieu_de LIKE N'%' + @SearchQuery + N'%' 
-            OR v.mo_ta LIKE N'%' + @SearchQuery + N'%' 
-            OR u.ten_dang_nhap LIKE N'%' + @SearchQuery + N'%' 
-            OR d.ten_danh_muc LIKE N'%' + @SearchQuery + N'%'
-        )
-    ORDER BY v.video_id DESC;
-END
+SELECT 
+    v.video_id AS Id, 
+    v.tieu_de AS Title, 
+    v.mo_ta AS Description, 
+    v.duong_dan_video AS RelativeUrl, 
+    v.ngay_tao AS UploadedAt,
+    v.danh_muc_id AS CategoryId,
+    u.ten_dang_nhap AS UploaderName,
+    d.ten_danh_muc AS CategoryName
+FROM dbo.video v
+LEFT JOIN dbo.nguoi_dung u ON v.nguoi_dung_id = u.nguoi_dung_id
+LEFT JOIN dbo.danh_muc d ON v.danh_muc_id = d.danh_muc_id;
 GO

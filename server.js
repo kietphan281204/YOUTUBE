@@ -410,15 +410,19 @@ app.get("/api/videos", async (req, res) => {
     const searchQuery = String(req.query.q || "").trim();
     const pool = await sql.connect(sqlConfig);
     const request = pool.request();
+    let q = "SELECT TOP (100) Id, Title, Description, RelativeUrl, UploadedAt FROM dbo.vw_tim_kiem_video WHERE 1=1";
     if (Number.isFinite(catId) && catId > 0) {
-      request.input("CategoryId", sql.Int, catId);
+      q += " AND CategoryId = @CatId";
+      request.input("CatId", sql.Int, catId);
     }
     if (searchQuery) {
-      request.input("SearchQuery", sql.NVarChar(255), searchQuery);
+      q += " AND (Title LIKE @Search OR Description LIKE @Search OR UploaderName LIKE @Search OR CategoryName LIKE @Search)";
+      request.input("Search", sql.NVarChar(255), `%${searchQuery}%`);
     }
+    q += " ORDER BY Id DESC";
     
-    // Gọi Stored Procedure thay vì viết lệnh SQL thủ công tại đây
-    const result = await request.execute("dbo.sp_tim_kiem_video");
+    // Đọc ra từ View (Nằm trong thư mục Views của SSMS)
+    const result = await request.query(q);
     res.json({ ok: true, videos: result.recordset || [] });
   } catch (err) {
     res.status(500).json({ ok: false, error: err?.message || String(err) });

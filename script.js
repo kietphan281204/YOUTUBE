@@ -246,23 +246,43 @@ async function onCategoryChange() {
     }
 }
 
+async function addCustomTag() {
+    const select = document.getElementById("categoryInput");
+    const catId = select ? select.value : null;
+    if (!catId) return alert("Vui lòng chọn danh mục trước khi thêm thẻ tag.");
+    
+    const input = document.getElementById("customTagInput");
+    if (!input) return;
+    let tag = input.value.trim();
+    if (!tag) return;
+    if (!tag.startsWith("#")) tag = "#" + tag;
+    
+    try {
+        const res = await apiFetch("/api/tags", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ categoryId: catId, tagName: tag })
+        });
+        const data = await parseJsonResponse(res);
+        if (data.ok) {
+            input.value = "";
+            onCategoryChange(); // Làm mới danh sách tag hiện có
+        } else {
+            alert("Lỗi thêm tag: " + data.error);
+        }
+    } catch(e) {
+        console.warn("Lỗi mạng khi thêm tag", e);
+        alert("Có lỗi xảy ra khi lưu Tag");
+    }
+}
 let currentSearchQuery = "";
 
 async function handleSearch() {
     const input = document.getElementById("searchInput");
     if (!input) return;
-    currentSearchQuery = input.value.trim();
-    
-    // Xoá trạng thái danh mục đang chọn
-    document.querySelectorAll(".category-btn").forEach(b => b.classList.remove("active"));
-    currentCategoryId = null;
-
-    const feedTitle = document.getElementById("feedTitle");
-    if (feedTitle) {
-        feedTitle.textContent = currentSearchQuery ? `Kết quả tìm kiếm: "${currentSearchQuery}"` : "Video mới";
-    }
-
-    await loadVideos(null, currentSearchQuery);
+    const q = input.value.trim();
+    if (!q) return;
+    window.location.href = `search.html?q=${encodeURIComponent(q)}`;
 }
 
 // Bắt sự kiện Enter khi gõ tìm kiếm
@@ -496,5 +516,26 @@ window.addEventListener("DOMContentLoaded", () => {
     renderCurrentUser();
     loadCategories();
     loadTrendingVideos();
-    loadVideos();
+
+    const qs = new URLSearchParams(window.location.search);
+    const query = qs.get("q");
+
+    if (window.location.pathname.includes("search.html")) {
+        // Chúng ta đang ở trang tìm kiếm
+        const searchInput = document.getElementById("searchInput");
+        if (searchInput && query) searchInput.value = query;
+        const feedTitle = document.getElementById("feedTitle");
+        if (feedTitle) feedTitle.textContent = query ? `Kết quả tìm kiếm: "${query}"` : "Vui lòng nhập từ khóa tìm kiếm";
+        
+        if (query) {
+            loadVideos(null, query);
+        }
+    } else {
+        // Trang chủ bình thường
+        const isHistoryPage = window.location.pathname.includes("history.html");
+        const isUploadPage = window.location.pathname.includes("upload.html");
+        if (!isHistoryPage && !isUploadPage) {
+            loadVideos();
+        }
+    }
 });

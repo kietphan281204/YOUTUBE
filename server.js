@@ -404,6 +404,35 @@ app.get("/api/tags", async (req, res) => {
   }
 });
 
+app.post("/api/tags", async (req, res) => {
+  try {
+    const categoryId = Number(req.body.categoryId);
+    const tagName = String(req.body.tagName || "").trim();
+    if (!Number.isFinite(categoryId) || categoryId <= 0 || !tagName) {
+      return res.status(400).json({ ok: false, error: "Tham số không hợp lệ." });
+    }
+
+    const pool = await sql.connect(sqlConfig);
+    const request = pool.request();
+    
+    // Kiểm tra xem thẻ tag gốc đã tồn tại chưa để tránh lỗi uq_ten_tag
+    const checkQuery = "SELECT 1 FROM dbo.the_tag WHERE ten_tag = @TagName";
+    request.input("TagName", sql.NVarChar(255), tagName);
+    const checkRes = await request.query(checkQuery);
+    
+    if (checkRes.recordset && checkRes.recordset.length > 0) {
+      return res.json({ ok: true, message: "Thẻ tag đã tồn tại trên hệ thống." });
+    }
+
+    request.input("CatId", sql.Int, categoryId);
+    await request.query("INSERT INTO dbo.the_tag (danh_muc_id, ten_tag) VALUES (@CatId, @TagName)");
+    
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err?.message || String(err) });
+  }
+});
+
 app.get("/api/videos", async (req, res) => {
   try {
     const catId = Number(req.query.categoryId);

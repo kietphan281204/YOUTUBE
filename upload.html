@@ -36,6 +36,11 @@
         <div id="tagSuggestContainer" style="margin-bottom: 15px; display: none; width:min(520px,100%);">
             <div style="font-size:12px;color:#666;margin-bottom:6px;">Gợi ý thẻ tag (nhấp để thêm vào mô tả):</div>
             <div id="tagButtons" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+            
+            <div style="margin-top: 10px; display: flex; gap: 8px;">
+                <input type="text" id="customTagInput" placeholder="Thêm tag (VD: #gamehay)" style="padding: 6px; flex: 1; border: 1px solid #ccc; border-radius: 4px;">
+                <button type="button" onclick="addCustomTag()" style="padding: 6px 12px; border: none; background: #007bff; color: white; border-radius: 4px; cursor: pointer;">Thêm Tag</button>
+            </div>
         </div>
         <input type="file" id="videoInput" accept="video/*">
         <button id="uploadBtn" onclick="uploadVideo()">Tải lên ngay</button>

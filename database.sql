@@ -153,3 +153,167 @@ BEGIN
   ');
 END
 GO
+
+-- ========== DANH MỤC & THE TAG ==========
+-- Bảng Danh Mục
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'dbo.danh_muc') AND type in (N'U'))
+BEGIN
+  CREATE TABLE dbo.danh_muc (
+    danh_muc_id INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+    ten_danh_muc NVARCHAR(255) NOT NULL
+  );
+END
+GO
+
+-- Bảng Thẻ Tag
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'dbo.the_tag') AND type in (N'U'))
+BEGIN
+  CREATE TABLE dbo.the_tag (
+    tag_id INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+    danh_muc_id INT NULL,
+    ten_tag NVARCHAR(255) NOT NULL,
+    CONSTRAINT FK_the_tag_danh_muc FOREIGN KEY (danh_muc_id) REFERENCES dbo.danh_muc(danh_muc_id)
+  );
+END
+GO
+
+-- Insert Dữ Liệu
+IF NOT EXISTS (SELECT 1 FROM dbo.danh_muc)
+BEGIN
+  -- Insert Danh Muc
+  INSERT INTO dbo.danh_muc (ten_danh_muc) VALUES (N'Giải trí'); -- 1
+  INSERT INTO dbo.danh_muc (ten_danh_muc) VALUES (N'Âm nhạc & sáng tạo'); -- 2
+  INSERT INTO dbo.danh_muc (ten_danh_muc) VALUES (N'Gaming'); -- 3
+  INSERT INTO dbo.danh_muc (ten_danh_muc) VALUES (N'Giáo dục & kiến thức'); -- 4
+  INSERT INTO dbo.danh_muc (ten_danh_muc) VALUES (N'Làm đẹp & thời trang'); -- 5
+  INSERT INTO dbo.danh_muc (ten_danh_muc) VALUES (N'Ẩm thực'); -- 6
+  INSERT INTO dbo.danh_muc (ten_danh_muc) VALUES (N'Du lịch & trải nghiệm'); -- 7
+  INSERT INTO dbo.danh_muc (ten_danh_muc) VALUES (N'Lifestyle (đời sống)'); -- 8
+  INSERT INTO dbo.danh_muc (ten_danh_muc) VALUES (N'Thể thao & sức khỏe'); -- 9
+  INSERT INTO dbo.danh_muc (ten_danh_muc) VALUES (N'Review & kiếm tiền'); -- 10
+  INSERT INTO dbo.danh_muc (ten_danh_muc) VALUES (N'DIY & sáng tạo'); -- 11
+  INSERT INTO dbo.danh_muc (ten_danh_muc) VALUES (N'Tin tức & xã hội'); -- 12
+
+  DECLARE @Cat1 INT, @Cat2 INT, @Cat3 INT, @Cat4 INT, @Cat5 INT, @Cat6 INT;
+  DECLARE @Cat7 INT, @Cat8 INT, @Cat9 INT, @Cat10 INT, @Cat11 INT, @Cat12 INT;
+
+  SELECT @Cat1 = danh_muc_id FROM dbo.danh_muc WHERE ten_danh_muc = N'Giải trí';
+  SELECT @Cat2 = danh_muc_id FROM dbo.danh_muc WHERE ten_danh_muc = N'Âm nhạc & sáng tạo';
+  SELECT @Cat3 = danh_muc_id FROM dbo.danh_muc WHERE ten_danh_muc = N'Gaming';
+  SELECT @Cat4 = danh_muc_id FROM dbo.danh_muc WHERE ten_danh_muc = N'Giáo dục & kiến thức';
+  SELECT @Cat5 = danh_muc_id FROM dbo.danh_muc WHERE ten_danh_muc = N'Làm đẹp & thời trang';
+  SELECT @Cat6 = danh_muc_id FROM dbo.danh_muc WHERE ten_danh_muc = N'Ẩm thực';
+  SELECT @Cat7 = danh_muc_id FROM dbo.danh_muc WHERE ten_danh_muc = N'Du lịch & trải nghiệm';
+  SELECT @Cat8 = danh_muc_id FROM dbo.danh_muc WHERE ten_danh_muc = N'Lifestyle (đời sống)';
+  SELECT @Cat9 = danh_muc_id FROM dbo.danh_muc WHERE ten_danh_muc = N'Thể thao & sức khỏe';
+  SELECT @Cat10 = danh_muc_id FROM dbo.danh_muc WHERE ten_danh_muc = N'Review & kiếm tiền';
+  SELECT @Cat11 = danh_muc_id FROM dbo.danh_muc WHERE ten_danh_muc = N'DIY & sáng tạo';
+  SELECT @Cat12 = danh_muc_id FROM dbo.danh_muc WHERE ten_danh_muc = N'Tin tức & xã hội';
+
+  -- 1. Giải trí
+  INSERT INTO dbo.the_tag (danh_muc_id, ten_tag) VALUES 
+  (@Cat1, N'#haihuoc'), (@Cat1, N'#meme'), (@Cat1, N'#funny'), (@Cat1, N'#trend'), (@Cat1, N'#viral'), 
+  (@Cat1, N'#storytime'), (@Cat1, N'#drama'), (@Cat1, N'#parody'), (@Cat1, N'#reaction'), (@Cat1, N'#troll'), 
+  (@Cat1, N'#prank'), (@Cat1, N'#shortfilm'), (@Cat1, N'#giaitri'), (@Cat1, N'#cliphai'), (@Cat1, N'#noidunghay');
+
+  -- 2. Âm nhạc & sáng tạo
+  INSERT INTO dbo.the_tag (danh_muc_id, ten_tag) VALUES 
+  (@Cat2, N'#amnhac'), (@Cat2, N'#music'), (@Cat2, N'#cover'), (@Cat2, N'#remix'), (@Cat2, N'#dance'), 
+  (@Cat2, N'#nhay'), (@Cat2, N'#lipsync'), (@Cat2, N'#trendmusic'), (@Cat2, N'#beat'), (@Cat2, N'#sangtac'), 
+  (@Cat2, N'#dj'), (@Cat2, N'#karaoke'), (@Cat2, N'#lofi'), (@Cat2, N'#nhachay'), (@Cat2, N'#mv');
+
+  -- 3. Gaming
+  INSERT INTO dbo.the_tag (danh_muc_id, ten_tag) VALUES 
+  (@Cat3, N'#gaming'), (@Cat3, N'#game'), (@Cat3, N'#gameplay'), (@Cat3, N'#stream'), (@Cat3, N'#livestream'), 
+  (@Cat3, N'#highlight'), (@Cat3, N'#funnygame'), (@Cat3, N'#reviewgame'), (@Cat3, N'#mobilegame'), (@Cat3, N'#pcgame'), 
+  (@Cat3, N'#freefire'), (@Cat3, N'#pubg'), (@Cat3, N'#lienquan'), (@Cat3, N'#minecraft'), (@Cat3, N'#fifa');
+
+  -- 4. Giáo dục & kiến thức
+  INSERT INTO dbo.the_tag (danh_muc_id, ten_tag) VALUES 
+  (@Cat4, N'#giaoduc'), (@Cat4, N'#hoctap'), (@Cat4, N'#learning'), (@Cat4, N'#tienganh'), (@Cat4, N'#hoctienganh'), 
+  (@Cat4, N'#kienthuc'), (@Cat4, N'#khoahoc'), (@Cat4, N'#congnghe'), (@Cat4, N'#fact'), (@Cat4, N'#lifehack'), 
+  (@Cat4, N'#tips'), (@Cat4, N'#study'), (@Cat4, N'#studytips'), (@Cat4, N'#education'), (@Cat4, N'#dayhoc');
+
+  -- 5. Làm đẹp & thời trang
+  INSERT INTO dbo.the_tag (danh_muc_id, ten_tag) VALUES 
+  (@Cat5, N'#lamdep'), (@Cat5, N'#beauty'), (@Cat5, N'#makeup'), (@Cat5, N'#skincare'), (@Cat5, N'#thoitrang'), 
+  (@Cat5, N'#fashion'), (@Cat5, N'#outfit'), (@Cat5, N'#ootd'), (@Cat5, N'#reviewmypham'), (@Cat5, N'#trangdiem'), 
+  (@Cat5, N'#duongda'), (@Cat5, N'#style'), (@Cat5, N'#makeuptutorial'), (@Cat5, N'#fashionstyle');
+
+  -- 6. Ẩm thực
+  INSERT INTO dbo.the_tag (danh_muc_id, ten_tag) VALUES 
+  (@Cat6, N'#amthuc'), (@Cat6, N'#food'), (@Cat6, N'#anuong'), (@Cat6, N'#reviewdoan'), (@Cat6, N'#monngon'), 
+  (@Cat6, N'#nauan'), (@Cat6, N'#cooking'), (@Cat6, N'#streetfood'), (@Cat6, N'#mukbang'), (@Cat6, N'#foodreview'), 
+  (@Cat6, N'#anvat'), (@Cat6, N'#doanvietnam'), (@Cat6, N'#delicious'), (@Cat6, N'#foodvlog');
+
+  -- 7. Du lịch & trải nghiệm
+  INSERT INTO dbo.the_tag (danh_muc_id, ten_tag) VALUES 
+  (@Cat7, N'#dulich'), (@Cat7, N'#travel'), (@Cat7, N'#vlogdulich'), (@Cat7, N'#khampha'), (@Cat7, N'#checkin'), 
+  (@Cat7, N'#reviewdulich'), (@Cat7, N'#phuot'), (@Cat7, N'#travelvlog'), (@Cat7, N'#diadiemdep'), (@Cat7, N'#vanhoa'), 
+  (@Cat7, N'#trai_nghiem'), (@Cat7, N'#explore'), (@Cat7, N'#trip');
+
+  -- 8. Lifestyle (đời sống)
+  INSERT INTO dbo.the_tag (danh_muc_id, ten_tag) VALUES 
+  (@Cat8, N'#lifestyle'), (@Cat8, N'#cuocsong'), (@Cat8, N'#vlog'), (@Cat8, N'#dailyvlog'), (@Cat8, N'#routine'), 
+  (@Cat8, N'#selfcare'), (@Cat8, N'#songtichcuc'), (@Cat8, N'#minimalism'), (@Cat8, N'#habits'), (@Cat8, N'#motngay'), 
+  (@Cat8, N'#tam_su'), (@Cat8, N'#life'), (@Cat8, N'#dayinmylife');
+
+  -- 9. Thể thao & sức khỏe
+  INSERT INTO dbo.the_tag (danh_muc_id, ten_tag) VALUES 
+  (@Cat9, N'#thethao'), (@Cat9, N'#fitness'), (@Cat9, N'#gym'), (@Cat9, N'#workout'), (@Cat9, N'#yoga'), 
+  (@Cat9, N'#health'), (@Cat9, N'#suckhoe'), (@Cat9, N'#giamcan'), (@Cat9, N'#tangcan'), (@Cat9, N'#cardio'), 
+  (@Cat9, N'#tapluyen'), (@Cat9, N'#bodybuilding'), (@Cat9, N'#fit'), (@Cat9, N'#healthy');
+
+  -- 10. Review & kiếm tiền
+  INSERT INTO dbo.the_tag (danh_muc_id, ten_tag) VALUES 
+  (@Cat10, N'#review'), (@Cat10, N'#unboxing'), (@Cat10, N'#danhgia'), (@Cat10, N'#kiem_tien'), (@Cat10, N'#makemoney'), 
+  (@Cat10, N'#kinhdoanh'), (@Cat10, N'#onlinebusiness'), (@Cat10, N'#affiliate'), (@Cat10, N'#banhang'), (@Cat10, N'#dropshipping'), 
+  (@Cat10, N'#startup'), (@Cat10, N'#marketing');
+
+  -- 11. DIY & sáng tạo
+  INSERT INTO dbo.the_tag (danh_muc_id, ten_tag) VALUES 
+  (@Cat11, N'#diy'), (@Cat11, N'#handmade'), (@Cat11, N'#thucong'), (@Cat11, N'#sangtao'), (@Cat11, N'#decor'), 
+  (@Cat11, N'#trangtri'), (@Cat11, N'#craft'), (@Cat11, N'#hack'), (@Cat11, N'#meovat'), (@Cat11, N'#y_tuong'), 
+  (@Cat11, N'#creative'), (@Cat11, N'#design'), (@Cat11, N'#lamdo');
+
+  -- 12. Tin tức & xã hội
+  INSERT INTO dbo.the_tag (danh_muc_id, ten_tag) VALUES 
+  (@Cat12, N'#tintuc'), (@Cat12, N'#news'), (@Cat12, N'#drama'), (@Cat12, N'#xahoi'), (@Cat12, N'#trend'), 
+  (@Cat12, N'#sukien'), (@Cat12, N'#viral'), (@Cat12, N'#hot'), (@Cat12, N'#capnhat'), (@Cat12, N'#tinnhanh'), 
+  (@Cat12, N'#thoisu'), (@Cat12, N'#phantich'), (@Cat12, N'#tinnong');
+END
+GO
+
+-- ========== THỦ TỤC TÌM KIẾM VIDEO (STORED PROCEDURE) ==========
+IF OBJECT_ID('dbo.sp_tim_kiem_video', 'P') IS NOT NULL
+  DROP PROCEDURE dbo.sp_tim_kiem_video;
+GO
+
+CREATE PROCEDURE dbo.sp_tim_kiem_video
+    @CategoryId INT = NULL,
+    @SearchQuery NVARCHAR(255) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT TOP (100) 
+        v.video_id AS Id, 
+        v.tieu_de AS Title, 
+        v.mo_ta AS Description, 
+        v.duong_dan_video AS RelativeUrl, 
+        v.ngay_tao AS UploadedAt
+    FROM dbo.video v
+    LEFT JOIN dbo.nguoi_dung u ON v.nguoi_dung_id = u.nguoi_dung_id
+    LEFT JOIN dbo.danh_muc d ON v.danh_muc_id = d.danh_muc_id
+    WHERE 
+        (@CategoryId IS NULL OR v.danh_muc_id = @CategoryId)
+        AND (
+            @SearchQuery IS NULL 
+            OR v.tieu_de LIKE N'%' + @SearchQuery + N'%' 
+            OR v.mo_ta LIKE N'%' + @SearchQuery + N'%' 
+            OR u.ten_dang_nhap LIKE N'%' + @SearchQuery + N'%' 
+            OR d.ten_danh_muc LIKE N'%' + @SearchQuery + N'%'
+        )
+    ORDER BY v.video_id DESC;
+END
+GO

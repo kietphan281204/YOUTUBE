@@ -22,7 +22,7 @@ app.set("trust proxy", true);
 app.use(
   cors({
     origin: true,
-    methods: ["GET", "POST", "OPTIONS", "HEAD"],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"],
     optionsSuccessStatus: 204,
     maxAge: 86400,
     // Preflight phải cho phép header tùy chỉnh (GitHub Pages → ngrok), nếu không trình duyệt bỏ X-Video-Description.

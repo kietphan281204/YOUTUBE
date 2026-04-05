@@ -407,10 +407,15 @@ app.get("/api/tags", async (req, res) => {
 
 app.post("/api/tags", async (req, res) => {
   try {
-    const categoryId = Number(req.body.categoryId);
+    let categoryId = Number(req.body.categoryId);
     const tagName = String(req.body.tagName || "").trim();
-    if (!Number.isFinite(categoryId) || categoryId <= 0 || !tagName) {
-      return res.status(400).json({ ok: false, error: "Tham số không hợp lệ." });
+    
+    if (!tagName) {
+      return res.status(400).json({ ok: false, error: "Tên tag không được để trống." });
+    }
+    
+    if (!Number.isFinite(categoryId) || categoryId <= 0) {
+      categoryId = null; // Cứ cho phép lưu tag dù không có category ID hợp lệ
     }
 
     const pool = await sql.connect(sqlConfig);

@@ -831,7 +831,6 @@ app.delete("/api/videos/:id", async (req, res) => {
     // Xoá các dữ liệu liên quan trước (vì ko có ON DELETE CASCADE toàn bộ)
     await pool.request().input("Vid", sql.Int, id).query("DELETE FROM dbo.binh_luan WHERE video_id = @Vid");
     await pool.request().input("Vid", sql.Int, id).query("DELETE FROM dbo.luot_thich WHERE video_id = @Vid");
-    await pool.request().input("Vid", sql.Int, id).query("DELETE FROM dbo.nguoi_xem WHERE video_id = @Vid");
     
     // Bảng lịch sử có ON DELETE CASCADE trên video, nhưng cứ an toàn
     await pool.request().input("Vid", sql.Int, id).query("DELETE FROM dbo.lich_su_dang_video WHERE video_id = @Vid");

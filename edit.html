@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Sửa Video</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <header>
+        <h1>Website Video</h1>
+        <div class="headerActions">
+            <button id="homeBtn" onclick="window.location.href='index.html'">Trang chủ</button>
+            <button id="uploadPageBtn" onclick="window.location.href='upload.html'" style="display:none;">Đăng Video</button>
+            <button id="historyBtn" onclick="window.location.href='history.html'" style="display:none;">Lịch sử video</button>
+            <button id="loginPageBtn">Tài khoản</button>
+        </div>
+    </header>
+
+    <main>
+        <div id="authStatus"></div>
+
+        <h2>Sửa Video</h2>
+
+        <input type="text" id="titleInput" placeholder="Tiêu đề"
+            style="padding:8px;width:min(520px,100%);margin-bottom:10px;">
+        <select id="categoryInput" style="padding:8px;width:min(520px,100%);margin-bottom:10px;display:block;" onchange="onCategoryChange()">
+            <option value="">-- Chọn danh mục --</option>
+        </select>
+        <div style="font-size:13px;color:#444;margin-bottom:6px;">Mô tả video</div>
+        <textarea id="descriptionInput" name="mo_ta" placeholder="Mô tả video" rows="3"
+            style="padding:8px;width:min(520px,100%);margin-bottom:6px;display:block;"></textarea>
+        
+        <div id="tagSuggestContainer" style="margin-bottom: 15px; display: none; width:min(520px,100%);">
+            <div style="font-size:12px;color:#666;margin-bottom:6px;">Gợi ý thẻ tag (nhấp để thêm vào mô tả):</div>
+            <div id="tagButtons" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+            
+            <div style="margin-top: 10px; display: flex; gap: 8px;">
+                <input type="text" id="customTagInput" placeholder="Thêm tag (VD: #gamehay)" style="padding: 6px; flex: 1; border: 1px solid #ccc; border-radius: 4px;">
+                <button type="button" onclick="addCustomTag()" style="padding: 6px 12px; border: none; background: #007bff; color: white; border-radius: 4px; cursor: pointer;">Thêm Tag</button>
+            </div>
+        </div>
+        
+        <button id="uploadBtn" onclick="saveEditedVideo()" style="background: #ff9800;">Lưu Thay Đổi</button>
+        <button id="cancelBtn" onclick="window.location.href='history.html'" style="margin-left: 8px; background: #555;">Huỷ / Quay lại</button>
+        
+        <div id="status" style="margin-top:10px;"></div>
+
+    </main>
+
+    <script src="config.js"></script>
+    <script src="script.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const videoId = urlParams.get('id');
+            if(!videoId) {
+                document.getElementById('status').innerHTML = '<p style="color:red">Không tìm thấy mã video! Đang trở về...</p>';
+                setTimeout(() => window.location.href = 'history.html', 2000);
+                return;
+            }
+
+            try {
+                // Populate categories first
+                await loadCategories();
+                
+                // Fetch current video details
+                const res = await apiFetch(`/api/videos/${videoId}`);
+                const data = await parseJsonResponse(res);
+                if(data.ok && data.video) {
+                    document.getElementById('titleInput').value = data.video.Title || '';
+                    document.getElementById('descriptionInput').value = data.video.Description || '';
+                    
+                    if (data.video.CategoryId) {
+                        document.getElementById('categoryInput').value = data.video.CategoryId;
+                        onCategoryChange();
+                    }
+                } else {
+                    document.getElementById('status').innerHTML = `<p style="color:red">Lỗi tải video: ${data.error}</p>`;
+                }
+            } catch (e) {
+                document.getElementById('status').innerHTML = `<p style="color:red">Lỗi mạng: ${e.message}</p>`;
+            }
+        });
+    </script>
+</body>
+
+</html>

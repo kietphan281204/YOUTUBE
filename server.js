@@ -133,6 +133,7 @@ function videoFromRow(row) {
     RelativeUrl: L.relativeurl ?? L.duong_dan_video,
     LuotXem: L.luotxem ?? L.luot_xem,
     UploadedAt: L.uploadedat ?? L.ngay_tao,
+    CategoryId: L.categoryid ?? L.danh_muc_id ?? null,
   };
 }
 
@@ -759,7 +760,7 @@ app.get("/api/videos/:id", async (req, res) => {
       .input("Id", sql.Int, Math.trunc(id))
       .query(
         "SELECT video_id AS Id, tieu_de AS Title, mo_ta AS Description, " +
-          "duong_dan_video AS RelativeUrl, luot_xem AS LuotXem, ngay_tao AS UploadedAt " +
+          "duong_dan_video AS RelativeUrl, luot_xem AS LuotXem, ngay_tao AS UploadedAt, danh_muc_id AS CategoryId " +
           "FROM dbo.video WHERE video_id = @Id"
       );
     const row = result.recordset?.[0];
@@ -789,6 +790,56 @@ app.get("/api/videos/:id/comments", async (req, res) => {
           "ORDER BY b.ngay_tao DESC"
       );
     res.json({ ok: true, comments: result.recordset || [] });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err?.message || String(err) });
+  }
+});
+
+app.put("/api/videos/:id", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id) || id <= 0) {
+      return res.status(400).json({ ok: false, error: "ID video không hợp lệ." });
+    }
+    const { title, description, categoryId } = req.body;
+    
+    const pool = await sql.connect(sqlConfig);
+    const result = await pool.request()
+      .input("Title", sql.NVarChar(255), title || "")
+      .input("Desc", sql.NVarChar(sql.MAX), description || "")
+      .input("CatId", sql.Int, categoryId ? Number(categoryId) : null)
+      .input("Vid", sql.Int, id)
+      .query(
+        "UPDATE dbo.video SET tieu_de = @Title, mo_ta = @Desc, danh_muc_id = @CatId WHERE video_id = @Vid; " +
+        "UPDATE dbo.lich_su_dang_video SET tieu_de = @Title, mo_ta = @Desc WHERE video_id = @Vid"
+      );
+      
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err?.message || String(err) });
+  }
+});
+
+app.delete("/api/videos/:id", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id) || id <= 0) {
+      return res.status(400).json({ ok: false, error: "ID video không hợp lệ." });
+    }
+    const pool = await sql.connect(sqlConfig);
+    
+    // Xoá các dữ liệu liên quan trước (vì ko có ON DELETE CASCADE toàn bộ)
+    await pool.request().input("Vid", sql.Int, id).query("DELETE FROM dbo.binh_luan WHERE video_id = @Vid");
+    await pool.request().input("Vid", sql.Int, id).query("DELETE FROM dbo.luot_thich WHERE video_id = @Vid");
+    await pool.request().input("Vid", sql.Int, id).query("DELETE FROM dbo.nguoi_xem WHERE video_id = @Vid");
+    
+    // Bảng lịch sử có ON DELETE CASCADE trên video, nhưng cứ an toàn
+    await pool.request().input("Vid", sql.Int, id).query("DELETE FROM dbo.lich_su_dang_video WHERE video_id = @Vid");
+    
+    // Xoá video chính
+    await pool.request().input("Vid", sql.Int, id).query("DELETE FROM dbo.video WHERE video_id = @Vid");
+    
+    res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ ok: false, error: err?.message || String(err) });
   }

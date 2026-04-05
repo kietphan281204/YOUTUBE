@@ -386,10 +386,98 @@ async function loadHistoryVideos() {
             return;
         }
         for (const v of videos) {
-            container.appendChild(renderVideoCard(v));
+            const card = renderVideoCard(v);
+            const meta = card.querySelector(".videoMeta");
+            if (meta) {
+                const actions = document.createElement("div");
+                actions.style.marginTop = "8px";
+                actions.style.display = "flex";
+                actions.style.gap = "8px";
+                
+                const editBtn = document.createElement("button");
+                editBtn.textContent = "Sửa video";
+                editBtn.style.padding = "4px 8px";
+                editBtn.style.background = "#ff9800";
+                editBtn.style.color = "white";
+                editBtn.style.border = "none";
+                editBtn.style.borderRadius = "4px";
+                editBtn.style.cursor = "pointer";
+                editBtn.onclick = (e) => { 
+                    e.stopPropagation(); 
+                    window.location.href = `edit.html?id=${encodeURIComponent(v.Id || v.id)}`;
+                };
+                
+                const deleteBtn = document.createElement("button");
+                deleteBtn.textContent = "Xoá video";
+                deleteBtn.style.padding = "4px 8px";
+                deleteBtn.style.background = "#d32f2f";
+                deleteBtn.style.color = "white";
+                deleteBtn.style.border = "none";
+                deleteBtn.style.borderRadius = "4px";
+                deleteBtn.style.cursor = "pointer";
+                deleteBtn.onclick = async (e) => { 
+                    e.stopPropagation(); 
+                    if (confirm("Bạn có chắc chắn muốn xoá video này vĩnh viễn?")) {
+                        await deleteVideo(v.Id || v.id); 
+                    }
+                };
+                
+                actions.appendChild(editBtn);
+                actions.appendChild(deleteBtn);
+                meta.appendChild(actions);
+            }
+            container.appendChild(card);
         }
     } catch (e) {
         container.innerHTML = `<p style="color:#b00020">Lỗi tải lịch sử: ${e.message}</p>`;
+    }
+}
+
+async function deleteVideo(id) {
+    try {
+        const res = await apiFetch(`/api/videos/${id}`, { method: "DELETE" });
+        const data = await parseJsonResponse(res);
+        if (data.ok) {
+            alert("Đã xoá video thành công.");
+            loadHistoryVideos();
+        } else {
+            alert("Lỗi xoá video: " + data.error);
+        }
+    } catch(e) {
+        alert("Lỗi mạng khi xoá video");
+    }
+}
+
+async function saveEditedVideo() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const videoId = urlParams.get('id');
+    if(!videoId) return;
+
+    const title = document.getElementById("titleInput").value.trim();
+    const description = document.getElementById("descriptionInput").value.trim();
+    const categoryId = document.getElementById("categoryInput").value;
+
+    const statusEl = document.getElementById("status");
+    setStatus("Đang lưu thay đổi...", false);
+
+    try {
+        const res = await apiFetch(`/api/videos/${videoId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ title, description, categoryId })
+        });
+
+        const data = await parseJsonResponse(res);
+        if (data.ok) {
+            setStatus("Sửa video thành công!", false);
+            setTimeout(() => {
+                window.location.href = "history.html";
+            }, 1000);
+        } else {
+            setStatus("Sửa video thất bại: " + data.error, true);
+        }
+    } catch(e) {
+        setStatus("Lỗi mạng: " + e.message, true);
     }
 }
 

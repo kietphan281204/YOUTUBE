@@ -33,8 +33,8 @@ echo [3/3] Dang lay link, ap vao Code va day len MANG... (Doi chut nhe)
 
 powershell -Command "$log = Get-Content tunnel.log | Out-String; $match = [regex]::Match($log, 'https://[a-zA-Z0-9-]+\.trycloudflare\.com'); if ($match.Success) { $url = $match.Value; Write-Host '=> Da bat duoc link: ' $url; (Get-Content config.js) -replace 'window.API_BASE = \".*\";', \"window.API_BASE = `\"$url`\";\" | Set-Content config.js; } else { Write-Host 'Loi gi do khong tim thay link' }"
 
-git add config.js
-git commit -m "Auto Update Cloudflare Link"
+git add .
+git commit -m "Update system (server logic and stats display)"
 git push
 
 echo.

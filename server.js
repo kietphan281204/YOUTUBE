@@ -131,7 +131,7 @@ function videoFromRow(row) {
     Title: L.title ?? L.tieu_de ?? "",
     Description: desc,
     RelativeUrl: L.relativeurl ?? L.duong_dan_video,
-    LuotXem: L.luotxem ?? L.luot_xem,
+    LuotXem: Number(L.luotxem ?? L.luot_xem ?? 0),
     SoLike: Number(L.so_like ?? L.solike ?? 0),
     SoBinhLuan: Number(L.so_binh_luan ?? L.sobinhluan ?? 0),
     UploadedAt: L.uploadedat ?? L.ngay_tao,
@@ -1045,6 +1045,87 @@ app.post("/api/videos/:id/likes/toggle", async (req, res) => {
   }
 });
 
+/**
+ * Statistics endpoint: Returns aggregated stats for user's videos
+ */
+app.get("/api/stats/:userId", async (req, res) => {
+  try {
+    const userId = Number(req.params.userId);
+    console.log("[stats] Loading stats for userId:", userId);
+    if (!Number.isFinite(userId) || userId <= 0) {
+      console.warn("[stats] Invalid userId:", req.params.userId);
+      return res.status(400).json({ ok: false, error: "ID người dùng không hợp lệ." });
+    }
+    const pool = await sql.connect(sqlConfig);
+    
+    // Get real-time total stats from dbo.video for better accuracy than the history table
+    const totalResult = await pool
+      .request()
+      .input("Uid", sql.Int, userId)
+      .query(
+        "SELECT " +
+          "ISNULL(SUM(v.luot_xem), 0) AS totalViews, " +
+          "ISNULL((SELECT COUNT(*) FROM dbo.luot_thich lt " +
+          "  INNER JOIN dbo.video v2 ON lt.video_id = v2.video_id " +
+          "  WHERE v2.nguoi_dung_id = @Uid), 0) AS totalLikes, " +
+          "ISNULL((SELECT COUNT(*) FROM dbo.binh_luan bl " +
+          "  INNER JOIN dbo.video v3 ON bl.video_id = v3.video_id " +
+          "  WHERE v3.nguoi_dung_id = @Uid), 0) AS totalComments " +
+          "FROM dbo.video v " +
+          "WHERE v.nguoi_dung_id = @Uid"
+      );
+    
+    const row = totalResult.recordset?.[0] || {};
+    const totalStats = {
+      totalViews: Number(row.totalViews ?? 0),
+      totalLikes: Number(row.totalLikes ?? 0),
+      totalComments: Number(row.totalComments ?? 0)
+    };
+    
+    // Get daily stats (last 60 days) - Using Recursive CTE instead of spt_values for better compatibility
+    const dailyResult = await pool
+      .request()
+      .input("Uid", sql.Int, userId)
+      .input("Days", sql.Int, 60)
+      .query(
+        "WITH date_range AS ( " +
+          "SELECT CAST(DATEADD(DAY, -(@Days-1), GETDATE()) AS DATE) AS date " +
+          "UNION ALL " +
+          "SELECT DATEADD(DAY, 1, date) " +
+          "FROM date_range " +
+          "WHERE date < CAST(GETDATE() AS DATE) " +
+        ") " +
+        "SELECT " +
+          "d.date, " +
+          "ISNULL(SUM(v.luot_xem), 0) AS views, " +
+          "ISNULL((SELECT COUNT(*) FROM dbo.luot_thich lt " +
+          "  INNER JOIN dbo.video v2 ON lt.video_id = v2.video_id " +
+          "  WHERE v2.nguoi_dung_id = @Uid AND CAST(lt.ngay_tao AS DATE) = d.date), 0) AS likes, " +
+          "ISNULL((SELECT COUNT(*) FROM dbo.binh_luan bl " +
+          "  INNER JOIN dbo.video v3 ON bl.video_id = v3.video_id " +
+          "  WHERE v3.nguoi_dung_id = @Uid AND CAST(bl.ngay_tao AS DATE) = d.date), 0) AS comments " +
+          "FROM date_range d " +
+          "LEFT JOIN dbo.video v ON d.date = CAST(v.ngay_tao AS DATE) AND v.nguoi_dung_id = @Uid " +
+          "GROUP BY d.date " +
+          "ORDER BY d.date ASC " +
+        "OPTION (MAXRECURSION 366)"
+      );
+    
+    const dailyStats = (dailyResult.recordset || []).map(r => ({
+      date: r.date,
+      views: Number(r.views ?? 0),
+      likes: Number(r.likes ?? 0),
+      comments: Number(r.comments ?? 0)
+    }));
+    
+    console.log("[stats] Successfully loaded stats for userId:", userId, { dailyCount: dailyStats.length });
+    res.json({ ok: true, totalStats, dailyStats });
+  } catch (err) {
+    console.error("[stats] CRITICAL ERROR for userId:", userId, err);
+    res.status(500).json({ ok: false, error: err?.message || String(err) });
+  }
+});
+
 // Quick diagnostics: confirms which DB settings server is using (no password leaked)
 app.get("/api/diag", (_req, res) => {
   res.json({
@@ -1324,76 +1405,13 @@ if (process.argv.includes("--selftest-upload")) {
     process.exit(1);
   }
 }
-
-/**
- * Statistics endpoint: Returns aggregated stats for user's videos
- */
-app.get("/api/stats/:userId", async (req, res) => {
-  try {
-    const userId = Number(req.params.userId);
-    if (!Number.isFinite(userId) || userId <= 0) {
-      return res.status(400).json({ ok: false, error: "ID người dùng không hợp lệ." });
-    }
-    const pool = await sql.connect(sqlConfig);
-    
-    // Get total stats
-    const totalResult = await pool
-      .request()
-      .input("Uid", sql.Int, userId)
-      .query(
-        "SELECT " +
-          "ISNULL(SUM(l.luot_xem), 0) AS totalViews, " +
-          "ISNULL((SELECT COUNT(*) FROM dbo.luot_thich lt " +
-          "  INNER JOIN dbo.lich_su_dang_video ls ON lt.video_id = ls.video_id " +
-          "  WHERE ls.nguoi_dung_id = @Uid), 0) AS totalLikes, " +
-          "ISNULL((SELECT COUNT(*) FROM dbo.binh_luan bl " +
-          "  INNER JOIN dbo.lich_su_dang_video ls ON bl.video_id = ls.video_id " +
-          "  WHERE ls.nguoi_dung_id = @Uid), 0) AS totalComments " +
-          "FROM dbo.lich_su_dang_video l " +
-          "WHERE l.nguoi_dung_id = @Uid"
-      );
-    
-    const totalStats = totalResult.recordset[0] || { totalViews: 0, totalLikes: 0, totalComments: 0 };
-    
-    // Get daily stats (last 60 days)
-    const dailyResult = await pool
-      .request()
-      .input("Uid", sql.Int, userId)
-      .input("Days", sql.Int, 60)
-      .query(
-        "WITH date_range AS ( " +
-          "SELECT CAST(DATEADD(DAY, -number, CAST(GETDATE() AS DATE)) AS DATE) AS date " +
-          "FROM master.dbo.spt_values " +
-          "WHERE type = 'P' AND number < @Days " +
-        ") " +
-        "SELECT " +
-          "d.date, " +
-          "ISNULL(SUM(l.luot_xem), 0) AS views, " +
-          "ISNULL((SELECT COUNT(*) FROM dbo.luot_thich lt " +
-          "  INNER JOIN dbo.lich_su_dang_video ls ON lt.video_id = ls.video_id " +
-          "  WHERE ls.nguoi_dung_id = @Uid AND CAST(lt.ngay_tao AS DATE) = d.date), 0) AS likes, " +
-          "ISNULL((SELECT COUNT(*) FROM dbo.binh_luan bl " +
-          "  INNER JOIN dbo.lich_su_dang_video ls ON bl.video_id = ls.video_id " +
-          "  WHERE ls.nguoi_dung_id = @Uid AND CAST(bl.ngay_tao AS DATE) = d.date), 0) AS comments " +
-          "FROM date_range d " +
-          "LEFT JOIN dbo.lich_su_dang_video l ON d.date = CAST(l.thoi_gian_dang AS DATE) AND l.nguoi_dung_id = @Uid " +
-          "GROUP BY d.date " +
-          "ORDER BY d.date ASC"
-      );
-    
-    const dailyStats = dailyResult.recordset || [];
-    res.json({ ok: true, totalStats, dailyStats });
-  } catch (err) {
-    res.status(500).json({ ok: false, error: err?.message || String(err) });
-  }
-});
-
+// --- Start Server ---
 (async () => {
   await ensureDemoNguoiDung();
   await backfillVideoDurations();
-app.listen(port, () => {
-  // eslint-disable-next-line no-console
-  console.log(`Server running at http://localhost:${port}`);
-});
+  app.listen(port, () => {
+    // eslint-disable-next-line no-console
+    console.log(`Server running at http://localhost:${port}`);
+  });
 })();
 

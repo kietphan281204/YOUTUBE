@@ -13,13 +13,16 @@
     <header>
         <h1>Website Video</h1>
         <div class="headerSearch" style="display:flex; gap: 8px; flex: 1; max-width: 400px; margin: 0 20px;">
-            <input type="text" id="searchInput" placeholder="Tìm bằng tiêu đề, #tag..." style="flex:1; padding: 6px 12px; border-radius: 20px; border: none; outline: none;">
+            <input type="text" id="searchInput" placeholder="Tìm bằng tiêu đề, #tag..."
+                style="flex:1; padding: 6px 12px; border-radius: 20px; border: none; outline: none;">
             <button onclick="handleSearch()" style="background: #555; color: white; border-radius: 20px;">Tìm</button>
         </div>
         <div class="headerActions">
             <button id="homeBtn" onclick="window.location.href='index.html'">Trang chủ</button>
-            <button id="uploadPageBtn" onclick="window.location.href='upload.html'" style="display:none;">Đăng Video</button>
-            <button id="historyBtn" onclick="window.location.href='history.html'" style="display:none;">Lịch sử video</button>
+            <button id="uploadPageBtn" onclick="window.location.href='upload.html'" style="display:none;">Đăng
+                Video</button>
+            <button id="historyBtn" onclick="window.location.href='history.html'" style="display:none;">Lịch sử
+                video</button>
             <button id="loginPageBtn">Tài khoản</button>
         </div>
     </header>
@@ -29,7 +32,7 @@
 
         <div class="trendingSection">
             <h2>Video xu hướng</h2>
-            <p class="trendingHint">Video Xu Hướng: Từ 50 Điểm trở lên (Xem = 1Đ, Thích = 5Đ, Bình luận = 10Đ).</p>
+            <p class="trendingHint"></p>
             <div id="trendingStatus"></div>
             <div id="trendingContainer"></div>
         </div>

@@ -501,12 +501,19 @@ app.get("/api/videos/history/:userId", async (req, res) => {
       .request()
       .input("Uid", sql.Int, userId)
       .query(
-        "SELECT l.video_id AS Id, l.tieu_de AS Title, l.mo_ta AS Description, l.video_url AS RelativeUrl, l.luot_xem AS LuotXem, " +
-          "ISNULL(v.so_like, 0) AS SoLike, ISNULL(v.so_binh_luan, 0) AS SoBinhLuan, l.thoi_gian_dang AS UploadedAt " +
+        "SELECT " +
+          "l.video_id AS Id, " +
+          "l.tieu_de AS Title, " +
+          "l.mo_ta AS Description, " +
+          "l.video_url AS RelativeUrl, " +
+          "ISNULL(v.luot_xem, 0) AS LuotXem, " +
+          "ISNULL((SELECT COUNT(*) FROM dbo.luot_thich lt WHERE lt.video_id = l.video_id), 0) AS SoLike, " +
+          "ISNULL((SELECT COUNT(*) FROM dbo.binh_luan bl WHERE bl.video_id = l.video_id), 0) AS SoBinhLuan, " +
+          "l.thoi_gian_dang AS UploadedAt " +
           "FROM dbo.lich_su_dang_video l " +
-          "LEFT JOIN dbo.video_xu_huong v ON l.video_id = v.video_id " +
+          "LEFT JOIN dbo.video v ON l.video_id = v.video_id " +
           "WHERE l.nguoi_dung_id = @Uid " +
-          "ORDER BY ISNULL(v.luot_xem, l.luot_xem) DESC"
+          "ORDER BY l.thoi_gian_dang DESC"
       );
     const rows = (result.recordset || []).map((r) => videoFromRow(r));
     res.json({ ok: true, videos: rows });

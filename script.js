@@ -180,10 +180,6 @@ function renderHistoryRow(v) {
     infoCell.appendChild(thumbWrapper);
     infoCell.appendChild(textWrapper);
 
-    const privacyCell = document.createElement("div");
-    privacyCell.className = "historyCell";
-    privacyCell.textContent = "Mọi người";
-
     const viewsCell = document.createElement("div");
     viewsCell.className = "historyCell";
     viewsCell.textContent = v.LuotXem != null ? v.LuotXem : "0";
@@ -222,7 +218,6 @@ function renderHistoryRow(v) {
     actionsCell.appendChild(deleteBtn);
 
     row.appendChild(infoCell);
-    row.appendChild(privacyCell);
     row.appendChild(viewsCell);
     row.appendChild(likesCell);
     row.appendChild(commentsCell);
@@ -238,7 +233,7 @@ function renderHistoryRow(v) {
 function createHistoryHeader() {
     const header = document.createElement("div");
     header.className = "historyHeader";
-    ["Video", "Quyền riêng tư", "Lượt xem", "Lượt thích", "Bình luận", ""].forEach((label) => {
+    ["Video", "Lượt xem", "Lượt thích", "Bình luận", ""].forEach((label) => {
         const cell = document.createElement("div");
         cell.className = "historyCell";
         cell.textContent = label;

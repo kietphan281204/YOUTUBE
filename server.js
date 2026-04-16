@@ -1325,6 +1325,69 @@ if (process.argv.includes("--selftest-upload")) {
   }
 }
 
+/**
+ * Statistics endpoint: Returns aggregated stats for user's videos
+ */
+app.get("/api/stats/:userId", async (req, res) => {
+  try {
+    const userId = Number(req.params.userId);
+    if (!Number.isFinite(userId) || userId <= 0) {
+      return res.status(400).json({ ok: false, error: "ID người dùng không hợp lệ." });
+    }
+    const pool = await sql.connect(sqlConfig);
+    
+    // Get total stats
+    const totalResult = await pool
+      .request()
+      .input("Uid", sql.Int, userId)
+      .query(
+        "SELECT " +
+          "ISNULL(SUM(l.luot_xem), 0) AS totalViews, " +
+          "ISNULL((SELECT COUNT(*) FROM dbo.luot_thich lt " +
+          "  INNER JOIN dbo.lich_su_dang_video ls ON lt.video_id = ls.video_id " +
+          "  WHERE ls.nguoi_dung_id = @Uid), 0) AS totalLikes, " +
+          "ISNULL((SELECT COUNT(*) FROM dbo.binh_luan bl " +
+          "  INNER JOIN dbo.lich_su_dang_video ls ON bl.video_id = ls.video_id " +
+          "  WHERE ls.nguoi_dung_id = @Uid), 0) AS totalComments " +
+          "FROM dbo.lich_su_dang_video l " +
+          "WHERE l.nguoi_dung_id = @Uid"
+      );
+    
+    const totalStats = totalResult.recordset[0] || { totalViews: 0, totalLikes: 0, totalComments: 0 };
+    
+    // Get daily stats (last 60 days)
+    const dailyResult = await pool
+      .request()
+      .input("Uid", sql.Int, userId)
+      .input("Days", sql.Int, 60)
+      .query(
+        "WITH date_range AS ( " +
+          "SELECT CAST(DATEADD(DAY, -number, CAST(GETDATE() AS DATE)) AS DATE) AS date " +
+          "FROM master.dbo.spt_values " +
+          "WHERE type = 'P' AND number < @Days " +
+        ") " +
+        "SELECT " +
+          "d.date, " +
+          "ISNULL(SUM(l.luot_xem), 0) AS views, " +
+          "ISNULL((SELECT COUNT(*) FROM dbo.luot_thich lt " +
+          "  INNER JOIN dbo.lich_su_dang_video ls ON lt.video_id = ls.video_id " +
+          "  WHERE ls.nguoi_dung_id = @Uid AND CAST(lt.ngay_tao AS DATE) = d.date), 0) AS likes, " +
+          "ISNULL((SELECT COUNT(*) FROM dbo.binh_luan bl " +
+          "  INNER JOIN dbo.lich_su_dang_video ls ON bl.video_id = ls.video_id " +
+          "  WHERE ls.nguoi_dung_id = @Uid AND CAST(bl.ngay_tao AS DATE) = d.date), 0) AS comments " +
+          "FROM date_range d " +
+          "LEFT JOIN dbo.lich_su_dang_video l ON d.date = CAST(l.thoi_gian_dang AS DATE) AND l.nguoi_dung_id = @Uid " +
+          "GROUP BY d.date " +
+          "ORDER BY d.date ASC"
+      );
+    
+    const dailyStats = dailyResult.recordset || [];
+    res.json({ ok: true, totalStats, dailyStats });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err?.message || String(err) });
+  }
+});
+
 (async () => {
   await ensureDemoNguoiDung();
   await backfillVideoDurations();

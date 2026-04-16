@@ -132,6 +132,8 @@ function videoFromRow(row) {
     Description: desc,
     RelativeUrl: L.relativeurl ?? L.duong_dan_video,
     LuotXem: L.luotxem ?? L.luot_xem,
+    SoLike: Number(L.so_like ?? L.solike ?? 0),
+    SoBinhLuan: Number(L.so_binh_luan ?? L.sobinhluan ?? 0),
     UploadedAt: L.uploadedat ?? L.ngay_tao,
     CategoryId: L.categoryid ?? L.danh_muc_id ?? null,
   };
@@ -453,8 +455,32 @@ app.get("/api/videos", async (req, res) => {
     if (searchQuery) {
       q += " AND (Title LIKE @Search OR Description LIKE @Search OR UploaderName LIKE @Search OR CategoryName LIKE @Search)";
       request.input("Search", sql.NVarChar(255), `%${searchQuery}%`);
+      request.input("SearchExact", sql.NVarChar(255), searchQuery);
+      request.input("SearchPrefix", sql.NVarChar(255), `${searchQuery}%`);
+      request.input("SearchWord", sql.NVarChar(255), `% ${searchQuery} %`);
+      q += ` ORDER BY
+        CASE
+          WHEN LOWER(Title) = LOWER(@SearchExact)
+            OR LOWER(Description) = LOWER(@SearchExact)
+            OR LOWER(UploaderName) = LOWER(@SearchExact)
+            OR LOWER(CategoryName) = LOWER(@SearchExact) THEN 0
+          WHEN LOWER(Title) LIKE LOWER(@SearchPrefix)
+            OR LOWER(Description) LIKE LOWER(@SearchPrefix)
+            OR LOWER(UploaderName) LIKE LOWER(@SearchPrefix)
+            OR LOWER(CategoryName) LIKE LOWER(@SearchPrefix) THEN 1
+          WHEN LOWER(Title) LIKE LOWER(@SearchWord)
+            OR LOWER(Description) LIKE LOWER(@SearchWord)
+            OR LOWER(UploaderName) LIKE LOWER(@SearchWord)
+            OR LOWER(CategoryName) LIKE LOWER(@SearchWord) THEN 2
+          WHEN LOWER(Title) LIKE LOWER(@Search)
+            OR LOWER(Description) LIKE LOWER(@Search)
+            OR LOWER(UploaderName) LIKE LOWER(@Search)
+            OR LOWER(CategoryName) LIKE LOWER(@Search) THEN 3
+          ELSE 4
+        END, Id DESC`;
+    } else {
+      q += " ORDER BY Id DESC";
     }
-    q += " ORDER BY Id DESC";
     
     // Đọc ra từ View (Nằm trong thư mục Views của SSMS)
     const result = await request.query(q);
@@ -475,7 +501,12 @@ app.get("/api/videos/history/:userId", async (req, res) => {
       .request()
       .input("Uid", sql.Int, userId)
       .query(
-        "SELECT video_id AS Id, tieu_de AS Title, mo_ta AS Description, video_url AS RelativeUrl, luot_xem AS LuotXem, thoi_gian_dang AS UploadedAt FROM dbo.lich_su_dang_video WHERE nguoi_dung_id = @Uid ORDER BY id DESC"
+        "SELECT l.video_id AS Id, l.tieu_de AS Title, l.mo_ta AS Description, l.video_url AS RelativeUrl, l.luot_xem AS LuotXem, " +
+          "ISNULL(v.so_like, 0) AS SoLike, ISNULL(v.so_binh_luan, 0) AS SoBinhLuan, l.thoi_gian_dang AS UploadedAt " +
+          "FROM dbo.lich_su_dang_video l " +
+          "LEFT JOIN dbo.video_xu_huong v ON l.video_id = v.video_id " +
+          "WHERE l.nguoi_dung_id = @Uid " +
+          "ORDER BY ISNULL(v.luot_xem, l.luot_xem) DESC"
       );
     const rows = (result.recordset || []).map((r) => videoFromRow(r));
     res.json({ ok: true, videos: rows });

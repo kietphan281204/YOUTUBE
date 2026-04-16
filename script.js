@@ -123,10 +123,12 @@ function renderVideoCard(v) {
     const meta = document.createElement("div");
     meta.className = "videoMeta";
     let metaLine = v.UploadedAt ? new Date(v.UploadedAt).toLocaleString() : "";
-    if (v.SoLike != null && v.SoBinhLuan != null && v.LuotXem != null) {
-        metaLine +=
-            (metaLine ? " · " : "") +
-            `${v.LuotXem} lượt xem · ${v.SoLike} thích · ${v.SoBinhLuan} BL`;
+    const stats = [];
+    if (v.LuotXem != null) stats.push(`${v.LuotXem} lượt xem`);
+    if (v.SoLike != null) stats.push(`${v.SoLike} thích`);
+    if (v.SoBinhLuan != null) stats.push(`${v.SoBinhLuan} BL`);
+    if (stats.length) {
+        metaLine += (metaLine ? " · " : "") + stats.join(" · ");
     }
     meta.textContent = metaLine;
 
@@ -140,6 +142,109 @@ function renderVideoCard(v) {
     card.appendChild(video);
     card.appendChild(meta);
     return card;
+}
+
+function renderHistoryRow(v) {
+    const row = document.createElement("div");
+    row.className = "historyRow";
+    const id = v.Id ?? v.id;
+
+    const infoCell = document.createElement("div");
+    infoCell.className = "historyCell historyInfo";
+
+    const thumbWrapper = document.createElement("div");
+    thumbWrapper.className = "historyThumbnail";
+    const thumbVideo = document.createElement("video");
+    thumbVideo.src = apiUrl(v.RelativeUrl);
+    thumbVideo.muted = true;
+    thumbVideo.preload = "metadata";
+    thumbVideo.playsInline = true;
+    thumbVideo.loop = true;
+    thumbVideo.addEventListener("click", (e) => e.stopPropagation());
+    thumbWrapper.appendChild(thumbVideo);
+
+    const textWrapper = document.createElement("div");
+    textWrapper.className = "historyText";
+
+    const title = document.createElement("div");
+    title.className = "historyTitle";
+    title.textContent = v.Title || "Video";
+
+    const tags = document.createElement("div");
+    tags.className = "historyTags";
+    const descText = pickVideoDescription(v);
+    tags.textContent = descText || "Không có mô tả";
+
+    textWrapper.appendChild(title);
+    textWrapper.appendChild(tags);
+    infoCell.appendChild(thumbWrapper);
+    infoCell.appendChild(textWrapper);
+
+    const privacyCell = document.createElement("div");
+    privacyCell.className = "historyCell";
+    privacyCell.textContent = "Mọi người";
+
+    const viewsCell = document.createElement("div");
+    viewsCell.className = "historyCell";
+    viewsCell.textContent = v.LuotXem != null ? v.LuotXem : "0";
+
+    const likesCell = document.createElement("div");
+    likesCell.className = "historyCell";
+    likesCell.textContent = v.SoLike != null ? v.SoLike : "0";
+
+    const commentsCell = document.createElement("div");
+    commentsCell.className = "historyCell";
+    commentsCell.textContent = v.SoBinhLuan != null ? v.SoBinhLuan : "0";
+
+    const actionsCell = document.createElement("div");
+    actionsCell.className = "historyCell historyActions";
+
+    const editBtn = document.createElement("button");
+    editBtn.textContent = "Sửa";
+    editBtn.style.background = "#ff9800";
+    editBtn.style.color = "white";
+    editBtn.onclick = (e) => {
+        e.stopPropagation();
+        if (id != null) window.location.href = `edit.html?id=${encodeURIComponent(String(id))}`;
+    };
+
+    const deleteBtn = document.createElement("button");
+    deleteBtn.textContent = "Xoá";
+    deleteBtn.style.background = "#d32f2f";
+    deleteBtn.style.color = "white";
+    deleteBtn.onclick = async (e) => {
+        e.stopPropagation();
+        if (!confirm("Bạn có chắc chắn muốn xoá video này vĩnh viễn?")) return;
+        await deleteVideo(id);
+    };
+
+    actionsCell.appendChild(editBtn);
+    actionsCell.appendChild(deleteBtn);
+
+    row.appendChild(infoCell);
+    row.appendChild(privacyCell);
+    row.appendChild(viewsCell);
+    row.appendChild(likesCell);
+    row.appendChild(commentsCell);
+    row.appendChild(actionsCell);
+
+    row.addEventListener("click", () => {
+        if (id != null) window.location.href = `video.html?id=${encodeURIComponent(String(id))}`;
+    });
+
+    return row;
+}
+
+function createHistoryHeader() {
+    const header = document.createElement("div");
+    header.className = "historyHeader";
+    ["Video", "Quyền riêng tư", "Lượt xem", "Lượt thích", "Bình luận", "Hành động"].forEach((label) => {
+        const cell = document.createElement("div");
+        cell.className = "historyCell";
+        cell.textContent = label;
+        header.appendChild(cell);
+    });
+    return header;
 }
 
 async function parseJsonResponse(res) {
@@ -385,49 +490,16 @@ async function loadHistoryVideos() {
             container.innerHTML = "<p>Trống (bạn chưa đăng video nào).</p>";
             return;
         }
+
+        const table = document.createElement("div");
+        table.className = "historyTable";
+        table.appendChild(createHistoryHeader());
+
         for (const v of videos) {
-            const card = renderVideoCard(v);
-            const meta = card.querySelector(".videoMeta");
-            if (meta) {
-                const actions = document.createElement("div");
-                actions.style.marginTop = "8px";
-                actions.style.display = "flex";
-                actions.style.gap = "8px";
-                
-                const editBtn = document.createElement("button");
-                editBtn.textContent = "Sửa video";
-                editBtn.style.padding = "4px 8px";
-                editBtn.style.background = "#ff9800";
-                editBtn.style.color = "white";
-                editBtn.style.border = "none";
-                editBtn.style.borderRadius = "4px";
-                editBtn.style.cursor = "pointer";
-                editBtn.onclick = (e) => { 
-                    e.stopPropagation(); 
-                    window.location.href = `edit.html?id=${encodeURIComponent(v.Id || v.id)}`;
-                };
-                
-                const deleteBtn = document.createElement("button");
-                deleteBtn.textContent = "Xoá video";
-                deleteBtn.style.padding = "4px 8px";
-                deleteBtn.style.background = "#d32f2f";
-                deleteBtn.style.color = "white";
-                deleteBtn.style.border = "none";
-                deleteBtn.style.borderRadius = "4px";
-                deleteBtn.style.cursor = "pointer";
-                deleteBtn.onclick = async (e) => { 
-                    e.stopPropagation(); 
-                    if (confirm("Bạn có chắc chắn muốn xoá video này vĩnh viễn?")) {
-                        await deleteVideo(v.Id || v.id); 
-                    }
-                };
-                
-                actions.appendChild(editBtn);
-                actions.appendChild(deleteBtn);
-                meta.appendChild(actions);
-            }
-            container.appendChild(card);
+            table.appendChild(renderHistoryRow(v));
         }
+
+        container.appendChild(table);
     } catch (e) {
         container.innerHTML = `<p style="color:#b00020">Lỗi tải lịch sử: ${e.message}</p>`;
     }

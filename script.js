@@ -192,44 +192,10 @@ function renderHistoryRow(v) {
     commentsCell.className = "historyCell";
     commentsCell.textContent = v.SoBinhLuan != null ? v.SoBinhLuan : "0";
 
-    const actionsCell = document.createElement("div");
-    actionsCell.className = "historyCell historyActions";
-
-    const editBtn = document.createElement("button");
-    editBtn.textContent = "Sửa";
-    editBtn.style.padding = "6px 10px";
-    editBtn.style.background = "#ff9800";
-    editBtn.style.color = "white";
-    editBtn.style.border = "none";
-    editBtn.style.borderRadius = "6px";
-    editBtn.style.cursor = "pointer";
-    editBtn.onclick = (e) => {
-        e.stopPropagation();
-        if (id != null) window.location.href = `edit.html?id=${encodeURIComponent(String(id))}`;
-    };
-
-    const deleteBtn = document.createElement("button");
-    deleteBtn.textContent = "Xoá";
-    deleteBtn.style.padding = "6px 10px";
-    deleteBtn.style.background = "#d32f2f";
-    deleteBtn.style.color = "white";
-    deleteBtn.style.border = "none";
-    deleteBtn.style.borderRadius = "6px";
-    deleteBtn.style.cursor = "pointer";
-    deleteBtn.onclick = async (e) => {
-        e.stopPropagation();
-        if (!confirm("Bạn có chắc chắn muốn xoá video này vĩnh viễn?")) return;
-        await deleteVideo(id);
-    };
-
-    actionsCell.appendChild(editBtn);
-    actionsCell.appendChild(deleteBtn);
-
     row.appendChild(infoCell);
     row.appendChild(viewsCell);
     row.appendChild(likesCell);
     row.appendChild(commentsCell);
-    row.appendChild(actionsCell);
 
     row.addEventListener("click", () => {
         if (id != null) window.location.href = `video.html?id=${encodeURIComponent(String(id))}`;
@@ -241,7 +207,7 @@ function renderHistoryRow(v) {
 function createHistoryHeader() {
     const header = document.createElement("div");
     header.className = "historyHeader";
-    ["Video", "Lượt xem", "Lượt thích", "Bình luận", "Hành động"].forEach((label) => {
+    ["Video", "Lượt xem", "Lượt thích", "Bình luận"].forEach((label) => {
         const cell = document.createElement("div");
         cell.className = "historyCell";
         cell.textContent = label;

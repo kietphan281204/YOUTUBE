@@ -116,7 +116,7 @@ main {
 .historyHeader,
 .historyRow {
     display: grid;
-    grid-template-columns: 3.5fr 0.9fr 0.9fr 0.9fr 1.3fr;
+    grid-template-columns: 3.5fr 0.9fr 0.9fr 0.9fr;
     gap: 12px;
     align-items: center;
     padding: 14px 18px;

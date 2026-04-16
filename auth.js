@@ -20,19 +20,24 @@ function setAuthStatus(msg, isError = false) {
     el.style.color = isError ? "#b00020" : "#1b5e20";
 }
 
+const AUTH_STORAGE_KEYS = ["current_user", "currentUser"];
+
 function saveCurrentUser(user) {
     if (!user) {
-        localStorage.removeItem(AUTH_STORAGE_KEY);
+        AUTH_STORAGE_KEYS.forEach((key) => localStorage.removeItem(key));
         return;
     }
-    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
+    const value = JSON.stringify(user);
+    AUTH_STORAGE_KEYS.forEach((key) => localStorage.setItem(key, value));
 }
 
 function loadCurrentUser() {
     try {
-        const raw = localStorage.getItem(AUTH_STORAGE_KEY);
-        if (!raw) return null;
-        return JSON.parse(raw);
+        for (const key of AUTH_STORAGE_KEYS) {
+            const raw = localStorage.getItem(key);
+            if (raw) return JSON.parse(raw);
+        }
+        return null;
     } catch {
         return null;
     }

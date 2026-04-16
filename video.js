@@ -1,5 +1,5 @@
 const API_BASE = typeof window.API_BASE === "string" ? window.API_BASE.replace(/\/+$/, "") : "";
-const AUTH_STORAGE_KEY = "current_user";
+const AUTH_STORAGE_KEYS = ["current_user", "currentUser"];
 
 function apiUrl(path) {
     const p = String(path || "");
@@ -15,9 +15,11 @@ function apiFetch(path, init = {}) {
 
 function loadCurrentUser() {
     try {
-        const raw = localStorage.getItem(AUTH_STORAGE_KEY);
-        if (!raw) return null;
-        return JSON.parse(raw);
+        for (const key of AUTH_STORAGE_KEYS) {
+            const raw = localStorage.getItem(key);
+            if (raw) return JSON.parse(raw);
+        }
+        return null;
     } catch {
         return null;
     }

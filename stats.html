@@ -180,7 +180,8 @@
 
         async function loadStats() {
             try {
-                const user = JSON.parse(localStorage.getItem("currentUser"));
+                const rawUser = localStorage.getItem("current_user") || localStorage.getItem("currentUser");
+                const user = rawUser ? JSON.parse(rawUser) : null;
                 if (!user || !user.nguoi_dung_id) {
                     showError("Vui lòng đăng nhập trước");
                     redirectToLogin();

@@ -8,7 +8,7 @@ document.getElementById("loginPageBtn").onclick = function () {
 // Backend base URL (for GitHub Pages or separate hosting).
 // Configure in config.js as: window.API_BASE = "https://your-backend.com"
 const API_BASE = typeof window.API_BASE === "string" ? window.API_BASE.replace(/\/+$/, "") : "";
-const AUTH_STORAGE_KEY = "current_user";
+const AUTH_STORAGE_KEYS = ["current_user", "currentUser"];
 let currentUser = null;
 
 function apiUrl(path) {
@@ -42,17 +42,20 @@ function setAuthStatus(msg, isError = false) {
 function saveCurrentUser(user) {
     currentUser = user || null;
     if (!currentUser) {
-        localStorage.removeItem(AUTH_STORAGE_KEY);
+        AUTH_STORAGE_KEYS.forEach((key) => localStorage.removeItem(key));
         return;
     }
-    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(currentUser));
+    const value = JSON.stringify(currentUser);
+    AUTH_STORAGE_KEYS.forEach((key) => localStorage.setItem(key, value));
 }
 
 function loadCurrentUser() {
     try {
-        const raw = localStorage.getItem(AUTH_STORAGE_KEY);
-        if (!raw) return null;
-        return JSON.parse(raw);
+        for (const key of AUTH_STORAGE_KEYS) {
+            const raw = localStorage.getItem(key);
+            if (raw) return JSON.parse(raw);
+        }
+        return null;
     } catch {
         return null;
     }

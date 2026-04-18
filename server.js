@@ -79,10 +79,12 @@ function hashPassword(raw) {
 }
 
 function mapNguoiDungRow(row) {
+  if (!row) return null;
   return {
-    nguoi_dung_id: row?.nguoi_dung_id,
-    ten_dang_nhap: row?.ten_dang_nhap,
-    email: row?.email,
+    nguoi_dung_id: row.nguoi_dung_id || row.id,
+    ten_dang_nhap: row.ten_dang_nhap || row.username,
+    email: row.email,
+    anh_dai_dien: row.anh_dai_dien || row.avatar_url || null
   };
 }
 
@@ -309,7 +311,7 @@ async function backfillVideoDurations() {
   }
 }
 
-app.post("/api/auth/register", async (req, res) => {
+app.post("/api/auth/register", upload.single("avatar"), async (req, res) => {
   try {
     const tenDangNhap = String(req.body?.ten_dang_nhap || "").trim().slice(0, 255);
     const email = String(req.body?.email || "").trim().slice(0, 255);
@@ -322,16 +324,18 @@ app.post("/api/auth/register", async (req, res) => {
       });
     }
 
+    const avatarUrl = req.file ? `/uploads/${req.file.filename}` : null;
     const pool = await sql.connect(sqlConfig);
     const inserted = await pool
       .request()
       .input("TenDangNhap", sql.NVarChar(255), tenDangNhap)
       .input("Email", sql.NVarChar(255), email)
       .input("MatKhauHash", sql.NVarChar(255), hashPassword(password))
+      .input("Avatar", sql.NVarChar(500), avatarUrl)
       .query(
         "INSERT INTO dbo.nguoi_dung (ten_dang_nhap, email, mat_khau_hash, anh_dai_dien, ngay_tao, ngay_cap_nhat) " +
-          "OUTPUT INSERTED.nguoi_dung_id, INSERTED.ten_dang_nhap, INSERTED.email " +
-          "VALUES (@TenDangNhap, @Email, @MatKhauHash, NULL, GETDATE(), GETDATE())"
+          "OUTPUT INSERTED.nguoi_dung_id, INSERTED.ten_dang_nhap, INSERTED.email, INSERTED.anh_dai_dien " +
+          "VALUES (@TenDangNhap, @Email, @MatKhauHash, @Avatar, GETDATE(), GETDATE())"
       );
 
     return res.json({ ok: true, user: mapNguoiDungRow(inserted.recordset?.[0] || null) });
@@ -362,7 +366,7 @@ app.post("/api/auth/login", async (req, res) => {
       .request()
       .input("Login", sql.NVarChar(255), login)
       .query(
-        "SELECT TOP (1) nguoi_dung_id, ten_dang_nhap, email, mat_khau_hash " +
+        "SELECT TOP (1) nguoi_dung_id, ten_dang_nhap, email, mat_khau_hash, anh_dai_dien " +
           "FROM dbo.nguoi_dung " +
           "WHERE ten_dang_nhap = @Login OR email = @Login"
       );

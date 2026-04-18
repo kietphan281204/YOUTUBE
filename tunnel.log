@@ -19,3 +19,23 @@
 2026-04-18T01:23:12Z INF ICMP proxy will use 2402:800:629e:73bf:6166:6216:1f8f:b6d1 in zone WiFi as source for IPv6
 2026-04-18T01:23:12Z INF Starting metrics server on 127.0.0.1:20241/metrics
 2026-04-18T01:23:13Z INF Registered tunnel connection connIndex=0 connection=55f47d3d-558c-4296-bbef-a505865c5f5d event=0 ip=198.41.200.233 location=hkg10 protocol=quic
+2026-04-18T01:24:03Z ERR  error="stream 37 canceled by remote with error code 0" connIndex=0 event=1 ingressRule=0 originService=http://localhost:8080
+2026-04-18T01:24:03Z ERR Request failed error="stream 37 canceled by remote with error code 0" connIndex=0 dest=https://rca-five-carries-silence.trycloudflare.com/uploads/1774413084121-47a22846da8af8-2026-03-25-095328855.mp4 event=0 ip=198.41.200.233 type=http
+2026-04-18T01:24:03Z ERR  error="stream 33 canceled by remote with error code 0" connIndex=0 event=1 ingressRule=0 originService=http://localhost:8080
+2026-04-18T01:24:03Z ERR Request failed error="stream 33 canceled by remote with error code 0" connIndex=0 dest=https://rca-five-carries-silence.trycloudflare.com/uploads/1774415908483-5bc9816e717ac-VID_20260318_170946.mp4 event=0 ip=198.41.200.233 type=http
+2026-04-18T01:24:03Z ERR  error="stream 41 canceled by remote with error code 0" connIndex=0 event=1 ingressRule=0 originService=http://localhost:8080
+2026-04-18T01:24:03Z ERR Request failed error="stream 41 canceled by remote with error code 0" connIndex=0 dest=https://rca-five-carries-silence.trycloudflare.com/uploads/1775304502286-35c541e66f5a98-Download%203.mp4 event=0 ip=198.41.200.233 type=http
+2026-04-18T01:24:03Z ERR  error="stream 25 canceled by remote with error code 0" connIndex=0 event=1 ingressRule=0 originService=http://localhost:8080
+2026-04-18T01:24:03Z ERR Request failed error="stream 25 canceled by remote with error code 0" connIndex=0 dest=https://rca-five-carries-silence.trycloudflare.com/uploads/1775302783091-06c38471d6092-Download.mp4 event=0 ip=198.41.200.233 type=http
+2026-04-18T01:24:03Z ERR  error="stream 29 canceled by remote with error code 0" connIndex=0 event=1 ingressRule=0 originService=http://localhost:8080
+2026-04-18T01:24:03Z ERR Request failed error="stream 29 canceled by remote with error code 0" connIndex=0 dest=https://rca-five-carries-silence.trycloudflare.com/uploads/1775011561596-65729973e45cf8-360p-watermark%202.mp4 event=0 ip=198.41.200.233 type=http
+2026-04-18T01:24:03Z ERR  error="stream 49 canceled by remote with error code 0" connIndex=0 event=1 ingressRule=0 originService=http://localhost:8080
+2026-04-18T01:24:03Z ERR Request failed error="stream 49 canceled by remote with error code 0" connIndex=0 dest=https://rca-five-carries-silence.trycloudflare.com/uploads/1774921087627-04bb5ec000e24-tiktok_1770973543577.mp4 event=0 ip=198.41.200.233 type=http
+2026-04-18T01:24:03Z ERR  error="stream 45 canceled by remote with error code 0" connIndex=0 event=1 ingressRule=0 originService=http://localhost:8080
+2026-04-18T01:24:03Z ERR  error="stream 53 canceled by remote with error code 0" connIndex=0 event=1 ingressRule=0 originService=http://localhost:8080
+2026-04-18T01:24:03Z ERR Request failed error="stream 45 canceled by remote with error code 0" connIndex=0 dest=https://rca-five-carries-silence.trycloudflare.com/uploads/1776306969848-cc11be2ef6afb8-da436f04120b44b8c68d47a1ebe7985d.mp4 event=0 ip=198.41.200.233 type=http
+2026-04-18T01:24:03Z ERR Request failed error="stream 53 canceled by remote with error code 0" connIndex=0 dest=https://rca-five-carries-silence.trycloudflare.com/uploads/1774929805281-a40652c291d76-360p-watermark%204.mp4 event=0 ip=198.41.200.233 type=http
+2026-04-18T01:24:04Z ERR  error="stream 77 canceled by remote with error code 0" connIndex=0 event=1 ingressRule=0 originService=http://localhost:8080
+2026-04-18T01:24:04Z ERR Request failed error="stream 77 canceled by remote with error code 0" connIndex=0 dest=https://rca-five-carries-silence.trycloudflare.com/uploads/1775304502286-35c541e66f5a98-Download%203.mp4 event=0 ip=198.41.200.233 type=http
+2026-04-18T01:28:07Z ERR  error="stream 109 canceled by remote with error code 0" connIndex=0 event=1 ingressRule=0 originService=http://localhost:8080
+2026-04-18T01:28:07Z ERR Request failed error="stream 109 canceled by remote with error code 0" connIndex=0 dest=https://rca-five-carries-silence.trycloudflare.com/uploads/1775304502286-35c541e66f5a98-Download%203.mp4 event=0 ip=198.41.200.233 type=http

@@ -117,8 +117,22 @@
                     throw new Error(data.error || "Không thể tải dữ liệu");
                 }
             } catch (e) {
-                console.error(e);
-                document.getElementById("userNameDisplay").textContent = "Lỗi tải thông tin";
+                console.error("Lỗi trang Profile:", e);
+                const nameDisplay = document.getElementById("userNameDisplay");
+                nameDisplay.style.color = "#b00020";
+                nameDisplay.textContent = "Lỗi: " + e.message;
+                
+                const container = document.getElementById("videoContainer");
+                container.innerHTML = `
+                    <div style="background: #fff3f3; padding: 20px; border-radius: 8px; border: 1px solid #ffcdd2;">
+                        <p><b>Gợi ý sửa lỗi:</b></p>
+                        <ul>
+                            <li>Hãy chắc chắn bạn đã chạy lại Server bằng lệnh <code>npm run dev</code>.</li>
+                            <li>Nếu dùng ngrok, hãy kiểm tra xem URL trong <code>config.js</code> có đúng không.</li>
+                            <li>Kiểm tra xem bạn đã chạy câu lệnh SQL để nạp dữ liệu lịch sử chưa.</li>
+                        </ul>
+                    </div>
+                `;
             }
         });
     </script>

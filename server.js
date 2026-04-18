@@ -525,7 +525,8 @@ app.get("/api/videos/history/:userId", async (req, res) => {
           "ISNULL((SELECT COUNT(*) FROM dbo.luot_thich lt WHERE lt.video_id = l.video_id), 0) AS SoLike, " +
           "ISNULL((SELECT COUNT(*) FROM dbo.binh_luan bl WHERE bl.video_id = l.video_id), 0) AS SoBinhLuan, " +
           "l.thoi_gian_dang AS UploadedAt, " +
-          "u.ten_dang_nhap AS TenDangNhap " +
+          "u.ten_dang_nhap AS TenDangNhap, " +
+          "u.anh_dai_dien AS Avatar " +
           "FROM dbo.lich_su_dang_video l " +
           "LEFT JOIN dbo.video v ON l.video_id = v.video_id " +
           "LEFT JOIN dbo.nguoi_dung u ON l.nguoi_dung_id = u.nguoi_dung_id " +

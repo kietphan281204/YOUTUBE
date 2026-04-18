@@ -313,14 +313,15 @@ async function backfillVideoDurations() {
 
 app.post("/api/auth/register", upload.single("avatar"), async (req, res) => {
   try {
-    const tenDangNhap = String(req.body?.ten_dang_nhap || "").trim().slice(0, 255);
+    // Lấy dữ liệu từ body (hỗ trợ cả snake_case và camelCase)
+    const tenDangNhap = String(req.body?.ten_dang_nhap || req.body?.username || "").trim().slice(0, 255);
     const email = String(req.body?.email || "").trim().slice(0, 255);
-    const password = String(req.body?.password || "");
+    const password = String(req.body?.password || "").trim();
 
-    if (!tenDangNhap || !email || !password) {
+    if (!tenDangNhap || !password) {
       return res.status(400).json({
         ok: false,
-        error: "Thiếu dữ liệu. Cần ten_dang_nhap, email, password.",
+        error: "Thiếu dữ liệu. Vui lòng nhập Tên đăng nhập và Mật khẩu.",
       });
     }
 

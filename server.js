@@ -394,6 +394,33 @@ app.post("/api/auth/login", async (req, res) => {
   }
 });
 
+app.post("/api/auth/update-avatar", upload.single("avatar"), async (req, res) => {
+  try {
+    const userId = Number(req.body?.nguoi_dung_id);
+    if (!Number.isFinite(userId) || userId <= 0) {
+      return res.status(400).json({ ok: false, error: "ID người dùng không hợp lệ." });
+    }
+    if (!req.file) {
+      return res.status(400).json({ ok: false, error: "Vui lòng chọn ảnh." });
+    }
+    const avatarUrl = `/uploads/${req.file.filename}`;
+    const pool = await sql.connect(sqlConfig);
+    
+    await pool.request()
+      .input("Id", sql.Int, userId)
+      .input("Avatar", sql.NVarChar(500), avatarUrl)
+      .query("UPDATE dbo.nguoi_dung SET anh_dai_dien = @Avatar WHERE nguoi_dung_id = @Id");
+      
+    const result = await pool.request()
+      .input("Id", sql.Int, userId)
+      .query("SELECT TOP 1 * FROM dbo.nguoi_dung WHERE nguoi_dung_id = @Id");
+      
+    return res.json({ ok: true, user: mapNguoiDungRow(result.recordset?.[0] || null) });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err?.message || String(err) });
+  }
+});
+
 app.get("/api/categories", async (_req, res) => {
   try {
     const pool = await sql.connect(sqlConfig);

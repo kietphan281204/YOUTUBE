@@ -191,7 +191,12 @@
 
     <div id="loggedInSection" style="display: none;" class="logged-in-box">
         <h1>Xin chào!</h1>
-        <img id="userAvatar" src="" alt="Avatar">
+        <div style="position: relative; display: inline-block;">
+            <img id="userAvatar" src="" alt="Avatar" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover;">
+            <label for="updateAvatarFile" style="position: absolute; bottom: 0; right: 0; background: #764ba2; color: white; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);" title="Thay đổi ảnh đại diện">✏️</label>
+            <input type="file" id="updateAvatarFile" accept="image/*" style="display: none;">
+        </div>
+        <div id="avatarUpdateStatus" style="font-size: 13px; margin-top: 5px; margin-bottom: 5px;"></div>
         <h2 id="displayUser">Tên người dùng</h2>
         <p id="displayEmail" style="color: #666; margin-bottom: 25px;"></p>
         <button class="submit-btn" style="background: #ff4757;" onclick="handleLogout()">Đăng xuất</button>

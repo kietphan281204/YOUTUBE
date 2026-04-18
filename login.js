@@ -130,4 +130,43 @@ window.addEventListener("DOMContentLoaded", () => {
             }
         });
     }
+
+    document.getElementById("updateAvatarFile")?.addEventListener("change", async function() {
+        if (!this.files || !this.files[0]) return;
+        const saved = localStorage.getItem("current_user") || localStorage.getItem("currentUser");
+        if (!saved) return;
+        const user = JSON.parse(saved);
+        if (!user || (!user.nguoi_dung_id && !user.id)) return;
+        
+        const userId = user.nguoi_dung_id || user.id;
+        const statusEl = document.getElementById("avatarUpdateStatus");
+        statusEl.textContent = "Đang tải ảnh lên...";
+        statusEl.style.color = "#666";
+        
+        const formData = new FormData();
+        formData.append("avatar", this.files[0]);
+        formData.append("nguoi_dung_id", userId);
+        
+        try {
+            const res = await fetch(apiUrl("/api/auth/update-avatar"), {
+                method: "POST",
+                headers: { "ngrok-skip-browser-warning": "1" },
+                body: formData
+            });
+            const text = await res.text();
+            let data;
+            try { data = JSON.parse(text); } catch { throw new Error("Server error"); }
+            if (!res.ok || !data.ok) throw new Error(data.error || "Lỗi cập nhật ảnh đại diện.");
+            
+            localStorage.setItem("current_user", JSON.stringify(data.user));
+            document.getElementById("userAvatar").src = data.user.anh_dai_dien ? apiUrl(data.user.anh_dai_dien) : "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+            statusEl.textContent = "Cập nhật thành công!";
+            statusEl.style.color = "#2ed573";
+            setTimeout(() => statusEl.textContent = "", 3000);
+        } catch (e) {
+            statusEl.textContent = "Lỗi: " + e.message;
+            statusEl.style.color = "#ff4757";
+        }
+    });
+
 });

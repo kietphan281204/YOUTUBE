@@ -146,7 +146,8 @@ function videoFromRow(row) {
     UploadedAt: L.uploadedat ?? L.ngay_tao ?? L.thoi_gian_dang,
     CategoryId: L.categoryid ?? L.danh_muc_id ?? null,
     NguoiDungId: L.nguoidungid ?? L.nguoi_dung_id,
-    TenDangNhap: L.tendangnhap ?? L.ten_dang_nhap
+    TenDangNhap: L.tendangnhap ?? L.ten_dang_nhap,
+    Avatar: L.avatar ?? L.anh_dai_dien ?? null
   };
 }
 
@@ -820,7 +821,7 @@ app.get("/api/videos/:id", async (req, res) => {
       .query(
         "SELECT v.video_id AS Id, v.tieu_de AS Title, v.mo_ta AS Description, " +
           "v.duong_dan_video AS RelativeUrl, v.luot_xem AS LuotXem, v.ngay_tao AS UploadedAt, " +
-          "v.danh_muc_id AS CategoryId, v.nguoi_dung_id AS NguoiDungId, u.ten_dang_nhap AS TenDangNhap " +
+          "v.danh_muc_id AS CategoryId, v.nguoi_dung_id AS NguoiDungId, u.ten_dang_nhap AS TenDangNhap, u.anh_dai_dien AS Avatar " +
           "FROM dbo.video v " +
           "LEFT JOIN dbo.nguoi_dung u ON v.nguoi_dung_id = u.nguoi_dung_id " +
           "WHERE v.video_id = @Id"

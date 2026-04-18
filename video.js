@@ -201,17 +201,23 @@ window.addEventListener("DOMContentLoaded", async () => {
             // Nếu không có tên từ server, dùng "Người dùng hệ thống"
             const userName = v.TenDangNhap || "Người dùng hệ thống";
             const userId = v.NguoiDungId || "1";
+            const avatarUrl = v.Avatar ? apiUrl(v.Avatar) : "https://cdn-icons-png.flaticon.com/512/149/149071.png";
             
-            metaEl.style.display = "block";
+            metaEl.style.display = "flex";
+            metaEl.style.alignItems = "center";
+            metaEl.style.gap = "15px";
             metaEl.style.padding = "10px";
             metaEl.style.background = "#f9f9f9";
             metaEl.style.borderLeft = "4px solid #0066ff";
             
             metaEl.innerHTML = `
-                <div style="font-weight: bold; margin-bottom: 4px;">
-                    Đăng bởi: <a href="user.html?id=${userId}" style="color: #0066ff; text-decoration: none;">${userName}</a>
+                <img src="${avatarUrl}" alt="${userName}" style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid #0066ff;">
+                <div>
+                    <div style="font-weight: bold; margin-bottom: 4px;">
+                        Đăng bởi: <a href="user.html?id=${userId}" style="color: #0066ff; text-decoration: none;">${userName}</a>
+                    </div>
+                    <div style="font-size: 13px; color: #666;">Ngày đăng: ${dateStr}</div>
                 </div>
-                <div style="font-size: 13px; color: #666;">Ngày đăng: ${dateStr}</div>
             `;
         }
         const viewCountEl = document.getElementById("viewCount");

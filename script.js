@@ -7,7 +7,7 @@ document.getElementById("loginPageBtn").onclick = function () {
 
 // Backend base URL (for GitHub Pages or separate hosting).
 // Configure in config.js as: window.API_BASE = "https://your-backend.com"
-const API_BASE = typeof window.API_BASE === "string" ? window.API_BASE.replace(/\/+$/, "") : "";
+var API_BASE = typeof window.API_BASE === "string" ? window.API_BASE.replace(/\/+$/, "") : "";
 const AUTH_STORAGE_KEYS = ["current_user", "currentUser"];
 let currentUser = null;
 

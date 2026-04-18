@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Trang cá nhân người dùng</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .userProfileHeader {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        .userAvatar {
+            width: 80px;
+            height: 80px;
+            background: #0066ff;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            font-weight: bold;
+        }
+        .userInfo h2 {
+            margin: 0;
+            font-size: 24px;
+            color: #333;
+        }
+        .userInfo p {
+            margin: 5px 0 0 0;
+            color: #666;
+        }
+        .userVideoTitle {
+            font-size: 20px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #0066ff;
+            display: inline-block;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1 style="cursor:pointer;" onclick="window.location.href='index.html'">Website Video</h1>
+        <div class="headerActions">
+            <button onclick="window.location.href='index.html'">← Quay lại</button>
+            <button id="loginPageBtn">Tài khoản</button>
+        </div>
+    </header>
+
+    <main>
+        <div id="authStatus"></div>
+
+        <div class="userProfileHeader">
+            <div class="userAvatar" id="userAvatar">?</div>
+            <div class="userInfo">
+                <h2 id="userNameDisplay">Đang tải...</h2>
+                <p id="userVideoCount">Số video đã đăng: 0</p>
+            </div>
+        </div>
+
+        <h2 class="userVideoTitle">Tất cả video đã tải lên</h2>
+        <div id="videoContainer" class="videoGrid">
+            <!-- Video của người dùng sẽ hiện ở đây -->
+        </div>
+    </main>
+
+    <script src="config.js"></script>
+    <script src="script.js"></script>
+    <script>
+        // Logic riêng cho trang user
+        window.addEventListener("DOMContentLoaded", async () => {
+            const params = new URLSearchParams(location.search);
+            const userId = params.get("id");
+            if (!userId) {
+                alert("Thiếu ID người dùng!");
+                window.location.href = "index.html";
+                return;
+            }
+
+            try {
+                // Sử dụng API history để lấy danh sách video của user này
+                const res = await apiFetch(`/api/videos/history/${userId}`);
+                const data = await parseJsonResponse(res);
+                
+                if (data.ok && Array.isArray(data.videos)) {
+                    const container = document.getElementById("videoContainer");
+                    const nameDisplay = document.getElementById("userNameDisplay");
+                    const countDisplay = document.getElementById("userVideoCount");
+                    const avatar = document.getElementById("userAvatar");
+
+                    container.innerHTML = "";
+                    countDisplay.textContent = `Số video đã đăng: ${data.videos.length}`;
+                    
+                    if (data.videos.length > 0) {
+                        // Lấy tên người đăng từ video đầu tiên (nếu API history chưa có info user riêng)
+                        // Trong server.js route history đã có thông tin này
+                        nameDisplay.textContent = "Người dùng: " + (data.videos[0].TenDangNhap || "User #" + userId);
+                        avatar.textContent = (data.videos[0].TenDangNhap || "U").charAt(0).toUpperCase();
+
+                        data.videos.forEach(v => {
+                            container.appendChild(renderVideoCard(v));
+                        });
+                    } else {
+                        nameDisplay.textContent = "Người dùng #" + userId;
+                        container.innerHTML = "<p>Người dùng này chưa có video nào.</p>";
+                    }
+                } else {
+                    throw new Error(data.error || "Không thể tải dữ liệu");
+                }
+            } catch (e) {
+                console.error(e);
+                document.getElementById("userNameDisplay").textContent = "Lỗi tải thông tin";
+            }
+        });
+    </script>
+</body>
+
+</html>

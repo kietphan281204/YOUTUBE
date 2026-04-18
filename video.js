@@ -193,9 +193,27 @@ window.addEventListener("DOMContentLoaded", async () => {
         }
         const vid = document.getElementById("detailVideo");
         vid.src = apiUrl(v.RelativeUrl);
-        document.getElementById("detailMeta").textContent = v.UploadedAt
-            ? `Đăng: ${new Date(v.UploadedAt).toLocaleString()}`
-            : "";
+        const metaEl = document.getElementById("detailMeta");
+        if (metaEl) {
+            console.log("Dữ liệu video nhận được:", v); // Kiểm tra trong F12 Console
+            const dateStr = v.UploadedAt ? new Date(v.UploadedAt).toLocaleString() : "";
+            
+            // Nếu không có tên từ server, dùng "Người dùng hệ thống"
+            const userName = v.TenDangNhap || "Người dùng hệ thống";
+            const userId = v.NguoiDungId || "1";
+            
+            metaEl.style.display = "block";
+            metaEl.style.padding = "10px";
+            metaEl.style.background = "#f9f9f9";
+            metaEl.style.borderLeft = "4px solid #0066ff";
+            
+            metaEl.innerHTML = `
+                <div style="font-weight: bold; margin-bottom: 4px;">
+                    Đăng bởi: <a href="user.html?id=${userId}" style="color: #0066ff; text-decoration: none;">${userName}</a>
+                </div>
+                <div style="font-size: 13px; color: #666;">Ngày đăng: ${dateStr}</div>
+            `;
+        }
         const viewCountEl = document.getElementById("viewCount");
         if (viewCountEl) {
             const n = Number(v.LuotXem ?? v.luot_xem ?? 0);
@@ -203,7 +221,8 @@ window.addEventListener("DOMContentLoaded", async () => {
         }
         setDetailStatus("", false);
     } catch (e) {
-        setDetailStatus(e.message || String(e), true);
+        console.error("Lỗi Video JS:", e);
+        setDetailStatus("Lỗi tải thông tin: " + e.message, true);
         return;
     }
 

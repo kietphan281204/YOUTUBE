@@ -509,9 +509,11 @@ app.get("/api/videos/history/:userId", async (req, res) => {
           "ISNULL(v.luot_xem, 0) AS LuotXem, " +
           "ISNULL((SELECT COUNT(*) FROM dbo.luot_thich lt WHERE lt.video_id = l.video_id), 0) AS SoLike, " +
           "ISNULL((SELECT COUNT(*) FROM dbo.binh_luan bl WHERE bl.video_id = l.video_id), 0) AS SoBinhLuan, " +
-          "l.thoi_gian_dang AS UploadedAt " +
+          "l.thoi_gian_dang AS UploadedAt, " +
+          "u.ten_dang_nhap AS TenDangNhap " +
           "FROM dbo.lich_su_dang_video l " +
           "LEFT JOIN dbo.video v ON l.video_id = v.video_id " +
+          "LEFT JOIN dbo.nguoi_dung u ON l.nguoi_dung_id = u.nguoi_dung_id " +
           "WHERE l.nguoi_dung_id = @Uid " +
           "ORDER BY l.thoi_gian_dang DESC"
       );
@@ -802,13 +804,21 @@ app.get("/api/videos/:id", async (req, res) => {
       .request()
       .input("Id", sql.Int, Math.trunc(id))
       .query(
-        "SELECT video_id AS Id, tieu_de AS Title, mo_ta AS Description, " +
-          "duong_dan_video AS RelativeUrl, luot_xem AS LuotXem, ngay_tao AS UploadedAt, danh_muc_id AS CategoryId " +
-          "FROM dbo.video WHERE video_id = @Id"
+        "SELECT v.video_id AS Id, v.tieu_de AS Title, v.mo_ta AS Description, " +
+          "v.duong_dan_video AS RelativeUrl, v.luot_xem AS LuotXem, v.ngay_tao AS UploadedAt, " +
+          "v.danh_muc_id AS CategoryId, v.nguoi_dung_id AS NguoiDungId, u.ten_dang_nhap AS TenDangNhap " +
+          "FROM dbo.video v " +
+          "LEFT JOIN dbo.nguoi_dung u ON v.nguoi_dung_id = u.nguoi_dung_id " +
+          "WHERE v.video_id = @Id"
       );
     const row = result.recordset?.[0];
     if (!row) return res.status(404).json({ ok: false, error: "Không tìm thấy video." });
-    res.json({ ok: true, video: videoFromRow(row) });
+    
+    const videoData = videoFromRow(row);
+    videoData.NguoiDungId = row.NguoiDungId;
+    videoData.TenDangNhap = row.TenDangNhap;
+    
+    res.json({ ok: true, video: videoData });
   } catch (err) {
     res.status(500).json({ ok: false, error: err?.message || String(err) });
   }

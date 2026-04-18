@@ -304,3 +304,20 @@ FROM dbo.video v
 LEFT JOIN dbo.nguoi_dung u ON v.nguoi_dung_id = u.nguoi_dung_id
 LEFT JOIN dbo.danh_muc d ON v.danh_muc_id = d.danh_muc_id;
 GO
+
+-- ========== BẢNG THỐNG KÊ CHI TIẾT THEO NGÀY ==========
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'dbo.thong_ke') AND type in (N'U'))
+BEGIN
+  CREATE TABLE dbo.thong_ke (
+    thong_ke_id INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+    nguoi_dung_id INT NOT NULL,
+    ngay DATE NOT NULL DEFAULT CAST(GETDATE() AS DATE),
+    so_luot_xem INT DEFAULT 0,
+    so_luot_thich INT DEFAULT 0,
+    so_binh_luan INT DEFAULT 0,
+    ngay_cap_nhat DATETIME DEFAULT GETDATE(),
+    CONSTRAINT FK_thong_ke_nguoi_dung FOREIGN KEY (nguoi_dung_id) REFERENCES dbo.nguoi_dung(nguoi_dung_id),
+    CONSTRAINT UQ_thong_ke_ngay UNIQUE (nguoi_dung_id, ngay)
+  );
+END
+GO

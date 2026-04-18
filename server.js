@@ -64,6 +64,13 @@ const upload = multer({
     fieldSize: 5 * 1024 * 1024, // mô tả dài vẫn an toàn
   },
   fileFilter: (_req, file, cb) => {
+    // Nếu upload ảnh đại diện thì cho phép định dạng ảnh
+    if (file.fieldname === "avatar") {
+      const isImage = file.mimetype.startsWith("image/") || [".png", ".jpg", ".jpeg", ".gif", ".webp"].includes(path.extname(file.originalname).toLowerCase());
+      if (isImage) return cb(null, true);
+      return cb(new Error("File không phải ảnh. Vui lòng chọn ảnh đại diện hợp lệ."));
+    }
+
     const mime = String(file.mimetype || "");
     const ext = path.extname(file.originalname || "").toLowerCase();
     const okByMime = mime.startsWith("video/");

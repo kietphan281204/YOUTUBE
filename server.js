@@ -134,8 +134,10 @@ function videoFromRow(row) {
     LuotXem: Number(L.luotxem ?? L.luot_xem ?? 0),
     SoLike: Number(L.so_like ?? L.solike ?? 0),
     SoBinhLuan: Number(L.so_binh_luan ?? L.sobinhluan ?? 0),
-    UploadedAt: L.uploadedat ?? L.ngay_tao,
+    UploadedAt: L.uploadedat ?? L.ngay_tao ?? L.thoi_gian_dang,
     CategoryId: L.categoryid ?? L.danh_muc_id ?? null,
+    NguoiDungId: L.nguoidungid ?? L.nguoi_dung_id,
+    TenDangNhap: L.tendangnhap ?? L.ten_dang_nhap
   };
 }
 

@@ -11,18 +11,16 @@
 
 
     <header>
-        <h1>Website Video</h1>
-        <div class="headerSearch" style="display:flex; gap: 8px; flex: 1; max-width: 400px; margin: 0 20px;">
-            <input type="text" id="searchInput" placeholder="Tìm bằng tiêu đề, #tag..."
-                style="flex:1; padding: 6px 12px; border-radius: 20px; border: none; outline: none;">
-            <button onclick="handleSearch()" style="background: #555; color: white; border-radius: 20px;">Tìm</button>
+        <h1 onclick="window.location.href='index.html'">Website Video</h1>
+        <div class="headerSearch">
+            <input type="text" id="searchInput" placeholder="Tìm bằng tiêu đề, #tag...">
+            <button onclick="handleSearch()">Tìm kiếm</button>
         </div>
         <div class="headerActions">
             <button id="homeBtn" onclick="window.location.href='index.html'">Trang chủ</button>
             <button id="uploadPageBtn" onclick="window.location.href='upload.html'" style="display:none;">Đăng
                 Video</button>
-            <button id="historyBtn" onclick="window.location.href='history.html'" style="display:none;">Lịch sử
-                video</button>
+            <button id="historyBtn" onclick="window.location.href='history.html'" style="display:none;">Quản lý</button>
             <button id="loginPageBtn">Tài khoản</button>
         </div>
     </header>

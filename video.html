@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Chi tiết video</title>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <header>
         <h1>Website Video</h1>
@@ -19,14 +21,30 @@
         <div id="detailStatus"></div>
 
         <article id="videoDetail">
-            <h2 id="detailTitle">Đang tải…</h2>
-            <p id="detailDescription" class="videoDescription"></p>
+            <h2 id="detailTitle" style="font-size: 1.8rem; margin-bottom: 15px;">Đang tải…</h2>
+            <div id="detailMeta" class="videoMeta" style="margin-bottom: 25px;"></div>
+
             <video id="detailVideo" controls playsinline></video>
-            <p id="detailMeta" class="videoMeta"></p>
-            <div class="likeRow">
-                <button type="button" id="likeBtn" class="likeBtn">👍 Thích</button>
-                <span id="likeCount" class="likeCount">0 lượt thích</span>
-                <span id="viewCount" class="viewCount">0 lượt xem</span>
+
+            <div
+                style="display: flex; justify-content: space-between; align-items: center; margin: 24px 0; background: #f8fafc; padding: 20px; border-radius: 16px;">
+                <div class="likeRow" style="margin-top: 0;">
+                    <button type="button" id="likeBtn" class="likeBtn">👍 Thích</button>
+                    <span id="likeCount" class="likeCount" style="font-weight: 600; color: var(--text-main);">0 lượt
+                        thích</span>
+                </div>
+                <div class="stats-bar" style="margin: 0;">
+                    <span>👁️ <span id="viewCount">0</span> lượt xem</span>
+                </div>
+            </div>
+
+            <div class="videoDescription-wrap"
+                style="background: white; border: 1px solid var(--border); padding: 20px; border-radius: 16px; margin-bottom: 30px;">
+                <h4
+                    style="margin-top: 0; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em;">
+                    Mô tả video</h4>
+                <p id="detailDescription" class="videoDescription"
+                    style="-webkit-line-clamp: unset; line-clamp: unset; display: block;"></p>
             </div>
         </article>
 
@@ -44,4 +62,5 @@
     <script src="config.js"></script>
     <script src="video.js"></script>
 </body>
+
 </html>

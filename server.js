@@ -843,6 +843,9 @@ app.get("/api/videos/:id", async (req, res) => {
       .input("Id", sql.Int, Math.trunc(id))
       .query("UPDATE dbo.video SET luot_xem = luot_xem + 1 WHERE video_id = @Id");
 
+    // Track daily view in thong_ke table
+    await updateDailyStats(pool, id, 'view');
+
     const result = await pool
       .request()
       .input("Id", sql.Int, Math.trunc(id))
@@ -984,6 +987,9 @@ app.post("/api/videos/:id/comments", async (req, res) => {
           "VALUES (@VideoId, @NguoiDungId, @NoiDung, GETDATE())"
       );
 
+    // Track daily comment in thong_ke table
+    await updateDailyStats(pool, videoId, 'comment');
+
     const row = inserted.recordset?.[0];
     const name = await pool
       .request()
@@ -1085,6 +1091,8 @@ app.post("/api/videos/:id/likes/toggle", async (req, res) => {
         .input("Uid", sql.Int, Math.trunc(userId))
         .query("DELETE FROM dbo.luot_thich WHERE video_id = @Vid AND nguoi_dung_id = @Uid");
       liked = false;
+      // Track daily unlike
+      await updateDailyStats(pool, videoId, 'like', -1);
     } else {
       await pool
         .request()
@@ -1092,6 +1100,8 @@ app.post("/api/videos/:id/likes/toggle", async (req, res) => {
         .input("Uid", sql.Int, Math.trunc(userId))
         .query("INSERT INTO dbo.luot_thich (video_id, nguoi_dung_id) VALUES (@Vid, @Uid)");
       liked = true;
+      // Track daily like
+      await updateDailyStats(pool, videoId, 'like', 1);
     }
 
     const cnt = await pool
@@ -1104,6 +1114,61 @@ app.post("/api/videos/:id/likes/toggle", async (req, res) => {
     res.status(500).json({ ok: false, error: err?.message || String(err) });
   }
 });
+
+/**
+ * Helper to update daily statistics in dbo.thong_ke table.
+ * Used for tracking activity (views, likes, comments) on a per-day basis.
+ */
+async function updateDailyStats(pool, videoId, type, increment = 1) {
+  try {
+    // 1. Find the owner of the video to record stats for their dashboard
+    const ownerRes = await pool.request()
+      .input("Vid", sql.Int, videoId)
+      .query("SELECT nguoi_dung_id FROM dbo.video WHERE video_id = @Vid");
+    const ownerId = ownerRes.recordset?.[0]?.nguoi_dung_id;
+    if (!ownerId) return;
+
+    // Today's date (local server time) formatted as YYYY-MM-DD for SQL DATE type
+    const today = new Date();
+    // Use local date parts to avoid UTC shift issues for daily stats
+    const dateStr = today.getFullYear() + "-" + 
+                   String(today.getMonth() + 1).padStart(2, '0') + "-" + 
+                   String(today.getDate()).padStart(2, '0');
+    
+    // 2. Determine which column to update
+    let column = "";
+    if (type === 'view') column = "so_luot_xem";
+    else if (type === 'like') column = "so_luot_thich";
+    else if (type === 'comment') column = "so_binh_luan";
+    
+    if (!column) return;
+
+    // 3. Upsert: Update if exists for today, else Insert
+    await pool.request()
+      .input("Uid", sql.Int, ownerId)
+      .input("Today", sql.VarChar(10), dateStr)
+      .query(`
+        IF EXISTS (SELECT 1 FROM dbo.thong_ke WHERE nguoi_dung_id = @Uid AND ngay = @Today)
+        BEGIN
+          UPDATE dbo.thong_ke 
+          SET ${column} = CASE WHEN ${column} + ${increment} < 0 THEN 0 ELSE ${column} + ${increment} END, 
+              ngay_cap_nhat = GETDATE()
+          WHERE nguoi_dung_id = @Uid AND ngay = @Today
+        END
+        ELSE
+        BEGIN
+          -- Only insert if increment is positive (don't create negative starting records)
+          IF ${increment} > 0
+          BEGIN
+            INSERT INTO dbo.thong_ke (nguoi_dung_id, ngay, ${column}, ngay_cap_nhat)
+            VALUES (@Uid, @Today, ${increment}, GETDATE())
+          END
+        END
+      `);
+  } catch (err) {
+    console.error(`[stats] Failed to update daily stats (${type}):`, err.message);
+  }
+}
 
 /**
  * Statistics endpoint: Returns aggregated stats for user's videos
@@ -1157,7 +1222,7 @@ app.get("/api/stats/:userId", async (req, res) => {
         ") " +
         "SELECT " +
           "d.date, " +
-          "ISNULL(SUM(v.luot_xem), 0) AS views, " +
+          "ISNULL((SELECT so_luot_xem FROM dbo.thong_ke tk WHERE tk.nguoi_dung_id = @Uid AND tk.ngay = d.date), 0) AS views, " +
           "ISNULL((SELECT COUNT(*) FROM dbo.luot_thich lt " +
           "  INNER JOIN dbo.video v2 ON lt.video_id = v2.video_id " +
           "  WHERE v2.nguoi_dung_id = @Uid AND CAST(lt.ngay_tao AS DATE) = d.date), 0) AS likes, " +
@@ -1165,8 +1230,6 @@ app.get("/api/stats/:userId", async (req, res) => {
           "  INNER JOIN dbo.video v3 ON bl.video_id = v3.video_id " +
           "  WHERE v3.nguoi_dung_id = @Uid AND CAST(bl.ngay_tao AS DATE) = d.date), 0) AS comments " +
           "FROM date_range d " +
-          "LEFT JOIN dbo.video v ON d.date = CAST(v.ngay_tao AS DATE) AND v.nguoi_dung_id = @Uid " +
-          "GROUP BY d.date " +
           "ORDER BY d.date ASC " +
         "OPTION (MAXRECURSION 366)"
       );
@@ -1465,10 +1528,35 @@ if (process.argv.includes("--selftest-upload")) {
     process.exit(1);
   }
 }
+/**
+ * One-time backfill to ensure dbo.thong_ke has some data based on existing video views.
+ * It puts existing total views on the video's upload date.
+ */
+async function backfillStatistics() {
+  try {
+    const pool = await sql.connect(sqlConfig);
+    const cnt = await pool.request().query("SELECT COUNT(*) AS n FROM dbo.thong_ke");
+    if (cnt.recordset?.[0]?.n > 0) return; // Skip if already has some data
+
+    console.log("[stats] Seeding dbo.thong_ke with existing video data...");
+    await pool.request().query(`
+      INSERT INTO dbo.thong_ke (nguoi_dung_id, ngay, so_luot_xem)
+      SELECT nguoi_dung_id, CAST(ngay_tao AS DATE), SUM(luot_xem)
+      FROM dbo.video
+      WHERE luot_xem > 0
+      GROUP BY nguoi_dung_id, CAST(ngay_tao AS DATE)
+    `);
+    console.log("[stats] Seeding completed.");
+  } catch (e) {
+    console.warn("[stats] Seeding failed (might be duplicate rows or schema mismatch):", e.message);
+  }
+}
+
 // --- Start Server ---
 (async () => {
   await ensureDemoNguoiDung();
   await backfillVideoDurations();
+  await backfillStatistics();
   app.listen(port, () => {
     // eslint-disable-next-line no-console
     console.log(`Server running at http://localhost:${port}`);

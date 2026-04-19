@@ -22,30 +22,44 @@
     <main>
         <div id="authStatus"></div>
 
-        <h2>Đăng Video</h2>
+        <div class="upload-container">
+            <h2 style="margin-top: 0; color: var(--primary);">Đăng Video Mới</h2>
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 30px;">Chia sẻ khoảnh khắc của bạn với mọi người</p>
 
-        <input type="text" id="titleInput" placeholder="Tiêu đề (tuỳ chọn)"
-            style="padding:8px;width:min(520px,100%);margin-bottom:10px;">
-        <select id="categoryInput" style="padding:8px;width:min(520px,100%);margin-bottom:10px;display:block;" onchange="onCategoryChange()">
-            <option value="">-- Chọn danh mục (Tuỳ chọn) --</option>
-        </select>
-        <div style="font-size:13px;color:#444;margin-bottom:6px;">Mô tả video</div>
-        <textarea id="descriptionInput" name="mo_ta" placeholder="Mô tả video (tuỳ chọn)" rows="3"
-            style="padding:8px;width:min(520px,100%);margin-bottom:6px;display:block;"></textarea>
-        
-        <div id="tagSuggestContainer" style="margin-bottom: 15px; display: none; width:min(520px,100%);">
-            <div style="font-size:12px;color:#666;margin-bottom:6px;">Gợi ý thẻ tag (nhấp để thêm vào mô tả):</div>
-            <div id="tagButtons" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
-            
-            <div style="margin-top: 10px; display: flex; gap: 8px;">
-                <input type="text" id="customTagInput" placeholder="Thêm tag (VD: #gamehay)" style="padding: 6px; flex: 1; border: 1px solid #ccc; border-radius: 4px;">
-                <button type="button" onclick="addCustomTag()" style="padding: 6px 12px; border: none; background: #007bff; color: white; border-radius: 4px; cursor: pointer;">Thêm Tag</button>
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; font-size: 0.9rem; font-weight: 500; margin-bottom: 8px;">Tiêu đề video</label>
+                <input type="text" id="titleInput" placeholder="Nhập tiêu đề hấp dẫn...">
             </div>
-        </div>
-        <input type="file" id="videoInput" accept="video/*">
-        <button id="uploadBtn" onclick="uploadVideo()">Tải lên ngay</button>
-        <div id="status" style="margin-top:10px;"></div>
 
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; font-size: 0.9rem; font-weight: 500; margin-bottom: 8px;">Danh mục</label>
+                <select id="categoryInput" onchange="onCategoryChange()">
+                    <option value="">-- Chọn danh mục phù hợp --</option>
+                </select>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; font-size: 0.9rem; font-weight: 500; margin-bottom: 8px;">Mô tả chi tiết</label>
+                <textarea id="descriptionInput" name="mo_ta" placeholder="Mô tả nội dung video của bạn..." rows="4"></textarea>
+            </div>
+            
+            <div id="tagSuggestContainer" style="margin-bottom: 24px; display: none;">
+                <div style="font-size:0.85rem; color: var(--text-muted); margin-bottom:10px;">Gợi ý thẻ tag (nhấp để thêm):</div>
+                <div id="tagButtons" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+                
+                <div style="margin-top: 16px; display: flex; gap: 8px;">
+                    <input type="text" id="customTagInput" placeholder="Thêm tag tự chọn (VD: #gamehay)">
+                    <button type="button" onclick="addCustomTag()">Thêm</button>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 30px; padding: 30px; border: 2px dashed var(--border); border-radius: 16px; text-align: center; background: #fcfcfc;">
+                <input type="file" id="videoInput" accept="video/*" style="margin-bottom: 0;">
+            </div>
+
+            <button id="uploadBtn" onclick="uploadVideo()" style="width: 100%; padding: 14px;">Bắt đầu tải lên</button>
+            <div id="status" style="margin-top:20px; text-align: center;"></div>
+        </div>
     </main>
 
     <script src="config.js"></script>

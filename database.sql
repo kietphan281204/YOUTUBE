@@ -298,7 +298,11 @@ SELECT
     v.duong_dan_video AS RelativeUrl, 
     v.ngay_tao AS UploadedAt,
     v.danh_muc_id AS CategoryId,
+    v.luot_xem AS LuotXem,
+    (SELECT COUNT(*) FROM dbo.luot_thich lt WHERE lt.video_id = v.video_id) AS SoLike,
+    (SELECT COUNT(*) FROM dbo.binh_luan bl WHERE bl.video_id = v.video_id) AS SoBinhLuan,
     u.ten_dang_nhap AS UploaderName,
+    u.anh_dai_dien AS Avatar,
     d.ten_danh_muc AS CategoryName
 FROM dbo.video v
 LEFT JOIN dbo.nguoi_dung u ON v.nguoi_dung_id = u.nguoi_dung_id

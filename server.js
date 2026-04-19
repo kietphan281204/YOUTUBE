@@ -489,7 +489,7 @@ app.get("/api/videos", async (req, res) => {
     const searchQuery = String(req.query.q || "").trim();
     const pool = await sql.connect(sqlConfig);
     const request = pool.request();
-    let q = "SELECT TOP (100) Id, Title, Description, RelativeUrl, UploadedAt FROM dbo.vw_tim_kiem_video WHERE 1=1";
+    let q = "SELECT TOP (100) Id, Title, Description, RelativeUrl, UploadedAt, LuotXem, SoLike, SoBinhLuan FROM dbo.vw_tim_kiem_video WHERE 1=1";
     if (Number.isFinite(catId) && catId > 0) {
       q += " AND CategoryId = @CatId";
       request.input("CatId", sql.Int, catId);
@@ -519,9 +519,9 @@ app.get("/api/videos", async (req, res) => {
             OR LOWER(UploaderName) LIKE LOWER(@Search)
             OR LOWER(CategoryName) LIKE LOWER(@Search) THEN 3
           ELSE 4
-        END, Id DESC`;
+        END, (LuotXem + (SoLike * 5) + (SoBinhLuan * 10)) DESC, Id DESC`;
     } else {
-      q += " ORDER BY Id DESC";
+      q += " ORDER BY (LuotXem + (SoLike * 5) + (SoBinhLuan * 10)) DESC, Id DESC";
     }
     
     // Đọc ra từ View (Nằm trong thư mục Views của SSMS)
@@ -558,7 +558,7 @@ app.get("/api/videos/history/:userId", async (req, res) => {
           "LEFT JOIN dbo.video v ON l.video_id = v.video_id " +
           "LEFT JOIN dbo.nguoi_dung u ON l.nguoi_dung_id = u.nguoi_dung_id " +
           "WHERE l.nguoi_dung_id = @Uid " +
-          "ORDER BY l.thoi_gian_dang DESC"
+          "ORDER BY (ISNULL(v.luot_xem, 0) + (ISNULL((SELECT COUNT(*) FROM dbo.luot_thich lt WHERE lt.video_id = l.video_id), 0) * 5) + (ISNULL((SELECT COUNT(*) FROM dbo.binh_luan bl WHERE bl.video_id = l.video_id), 0) * 10)) DESC, l.thoi_gian_dang DESC"
       );
     const rows = (result.recordset || []).map((r) => videoFromRow(r));
     res.json({ ok: true, videos: rows });

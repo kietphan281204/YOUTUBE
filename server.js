@@ -344,7 +344,7 @@ app.post("/api/auth/register", upload.single("avatar"), async (req, res) => {
       .query(
         "INSERT INTO dbo.nguoi_dung (ten_dang_nhap, email, mat_khau_hash, anh_dai_dien, ngay_tao, ngay_cap_nhat) " +
           "OUTPUT INSERTED.nguoi_dung_id, INSERTED.ten_dang_nhap, INSERTED.email, INSERTED.anh_dai_dien " +
-          "VALUES (@TenDangNhap, @Email, @MatKhauHash, @Avatar, GETDATE(), GETDATE())"
+          "VALUES (@TenDangNhap, @Email, @MatKhauHash, @Avatar, GETUTCDATE(), GETUTCDATE())"
       );
 
     return res.json({ ok: true, user: mapNguoiDungRow(inserted.recordset?.[0] || null) });
@@ -984,7 +984,7 @@ app.post("/api/videos/:id/comments", async (req, res) => {
         "INSERT INTO dbo.binh_luan (video_id, nguoi_dung_id, noi_dung, ngay_tao) " +
           "OUTPUT INSERTED.binh_luan_id AS Id, INSERTED.video_id AS VideoId, INSERTED.nguoi_dung_id AS NguoiDungId, " +
           "INSERTED.noi_dung AS NoiDung, INSERTED.ngay_tao AS NgayTao " +
-          "VALUES (@VideoId, @NguoiDungId, @NoiDung, GETDATE())"
+          "VALUES (@VideoId, @NguoiDungId, @NoiDung, GETUTCDATE())"
       );
 
     // Track daily comment in thong_ke table
@@ -1152,7 +1152,7 @@ async function updateDailyStats(pool, videoId, type, increment = 1) {
         BEGIN
           UPDATE dbo.thong_ke 
           SET ${column} = CASE WHEN ${column} + ${increment} < 0 THEN 0 ELSE ${column} + ${increment} END, 
-              ngay_cap_nhat = GETDATE()
+              ngay_cap_nhat = GETUTCDATE()
           WHERE nguoi_dung_id = @Uid AND ngay = @Today
         END
         ELSE
@@ -1161,7 +1161,7 @@ async function updateDailyStats(pool, videoId, type, increment = 1) {
           IF ${increment} > 0
           BEGIN
             INSERT INTO dbo.thong_ke (nguoi_dung_id, ngay, ${column}, ngay_cap_nhat)
-            VALUES (@Uid, @Today, ${increment}, GETDATE())
+            VALUES (@Uid, @Today, ${increment}, GETUTCDATE())
           END
         END
       `);
@@ -1374,7 +1374,7 @@ app.post("/api/videos", upload.single("video"), async (req, res) => {
         "DECLARE @T TABLE (Id INT, Title NVARCHAR(255), Description NVARCHAR(MAX), RelativeUrl NVARCHAR(500), UploadedAt DATETIME); " +
         "INSERT INTO dbo.video (nguoi_dung_id, tieu_de, mo_ta, duong_dan_video, duong_dan_anh_bia, thoi_luong, luot_xem, ngay_tao, ngay_cap_nhat, danh_muc_id, tag_id) " +
           "OUTPUT INSERTED.video_id AS Id, INSERTED.tieu_de AS Title, INSERTED.mo_ta AS Description, INSERTED.duong_dan_video AS RelativeUrl, INSERTED.ngay_tao AS UploadedAt INTO @T " +
-          "VALUES (@NguoiDungId, @Title, NULLIF(@Description, N''), @Path, @Path, @Duration, CAST(0 AS BIGINT), GETDATE(), GETDATE(), @DanhMucId, NULL); " +
+          "VALUES (@NguoiDungId, @Title, NULLIF(@Description, N''), @Path, @Path, @Duration, CAST(0 AS BIGINT), GETUTCDATE(), GETUTCDATE(), @DanhMucId, NULL); " +
         "SELECT * FROM @T;"
       );
 

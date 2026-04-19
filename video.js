@@ -76,7 +76,22 @@ function renderComments(comments) {
         const row = document.createElement("div");
         row.className = "commentItem";
         const who = c.TenDangNhap || `User #${c.NguoiDungId ?? ""}`;
-        const when = c.NgayTao ? new Date(c.NgayTao).toLocaleString() : "";
+        
+        // Format date strictly for Vietnam (24h format)
+        let when = "";
+        if (c.NgayTao) {
+            const date = new Date(c.NgayTao);
+            when = date.toLocaleString("vi-VN", {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+        }
+
         row.innerHTML =
             `<div class="commentHead"><strong>${escapeHtml(who)}</strong>` +
             `<span class="commentTime">${escapeHtml(when)}</span></div>` +
@@ -196,7 +211,19 @@ window.addEventListener("DOMContentLoaded", async () => {
         const metaEl = document.getElementById("detailMeta");
         if (metaEl) {
             console.log("Dữ liệu video nhận được:", v); // Kiểm tra trong F12 Console
-            const dateStr = v.UploadedAt ? new Date(v.UploadedAt).toLocaleString() : "";
+            
+            let dateStr = "";
+            if (v.UploadedAt) {
+                const date = new Date(v.UploadedAt);
+                dateStr = date.toLocaleString("vi-VN", {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                });
+            }
             
             // Nếu không có tên từ server, dùng "Người dùng hệ thống"
             const userName = v.TenDangNhap || "Người dùng hệ thống";

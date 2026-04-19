@@ -136,7 +136,21 @@ function renderVideoCard(v) {
 
     const meta = document.createElement("div");
     meta.className = "videoMeta";
-    let metaLine = v.UploadedAt ? new Date(v.UploadedAt).toLocaleString() : "";
+    
+    let dateStr = "";
+    if (v.UploadedAt) {
+        const date = new Date(v.UploadedAt);
+        dateStr = date.toLocaleString("vi-VN", {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+        });
+    }
+
+    let metaLine = dateStr;
     const stats = [];
     if (v.LuotXem != null) stats.push(`${v.LuotXem} lượt xem`);
     if (v.SoLike != null) stats.push(`${v.SoLike} thích`);

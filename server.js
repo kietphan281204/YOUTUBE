@@ -521,7 +521,7 @@ app.get("/api/videos", async (req, res) => {
           ELSE 4
         END, (LuotXem + (SoLike * 5) + (SoBinhLuan * 10)) DESC, Id DESC`;
     } else {
-      q += " ORDER BY (LuotXem + (SoLike * 5) + (SoBinhLuan * 10)) DESC, Id DESC";
+      q += " ORDER BY Id DESC";
     }
     
     // Đọc ra từ View (Nằm trong thư mục Views của SSMS)

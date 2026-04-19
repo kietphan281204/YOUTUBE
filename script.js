@@ -463,6 +463,7 @@ function setTrendingStatus(msg, isError = false) {
 async function loadTrendingVideos() {
     const container = document.getElementById("trendingContainer");
     if (!container) return;
+    container.innerHTML = "";
     try {
         const res = await apiFetch("/api/videos/trending");
         if (res.status === 404) {

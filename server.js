@@ -489,39 +489,45 @@ app.get("/api/videos", async (req, res) => {
     const searchQuery = String(req.query.q || "").trim();
     const pool = await sql.connect(sqlConfig);
     const request = pool.request();
-    let q = "SELECT TOP (100) Id, Title, Description, RelativeUrl, UploadedAt, LuotXem, SoLike, SoBinhLuan FROM dbo.vw_tim_kiem_video WHERE 1=1";
+    let q = `
+      SELECT TOP (100) 
+        v.video_id AS Id, 
+        v.tieu_de AS Title, 
+        v.mo_ta AS Description, 
+        v.duong_dan_video AS RelativeUrl, 
+        v.ngay_tao AS UploadedAt,
+        v.luot_xem AS LuotXem,
+        (SELECT COUNT(*) FROM dbo.luot_thich lt WHERE lt.video_id = v.video_id) AS SoLike,
+        (SELECT COUNT(*) FROM dbo.binh_luan bl WHERE bl.video_id = v.video_id) AS SoBinhLuan,
+        u.ten_dang_nhap AS TenDangNhap
+      FROM dbo.video v
+      LEFT JOIN dbo.nguoi_dung u ON v.nguoi_dung_id = u.nguoi_dung_id
+      WHERE 1=1
+    `;
     if (Number.isFinite(catId) && catId > 0) {
-      q += " AND CategoryId = @CatId";
+      q += " AND v.danh_muc_id = @CatId";
       request.input("CatId", sql.Int, catId);
     }
     if (searchQuery) {
-      q += " AND (Title LIKE @Search OR Description LIKE @Search OR UploaderName LIKE @Search OR CategoryName LIKE @Search)";
+      q += " AND (v.tieu_de LIKE @Search OR v.mo_ta LIKE @Search OR u.ten_dang_nhap LIKE @Search)";
       request.input("Search", sql.NVarChar(255), `%${searchQuery}%`);
       request.input("SearchExact", sql.NVarChar(255), searchQuery);
       request.input("SearchPrefix", sql.NVarChar(255), `${searchQuery}%`);
       request.input("SearchWord", sql.NVarChar(255), `% ${searchQuery} %`);
       q += ` ORDER BY
         CASE
-          WHEN LOWER(Title) = LOWER(@SearchExact)
-            OR LOWER(Description) = LOWER(@SearchExact)
-            OR LOWER(UploaderName) = LOWER(@SearchExact)
-            OR LOWER(CategoryName) = LOWER(@SearchExact) THEN 0
-          WHEN LOWER(Title) LIKE LOWER(@SearchPrefix)
-            OR LOWER(Description) LIKE LOWER(@SearchPrefix)
-            OR LOWER(UploaderName) LIKE LOWER(@SearchPrefix)
-            OR LOWER(CategoryName) LIKE LOWER(@SearchPrefix) THEN 1
-          WHEN LOWER(Title) LIKE LOWER(@SearchWord)
-            OR LOWER(Description) LIKE LOWER(@SearchWord)
-            OR LOWER(UploaderName) LIKE LOWER(@SearchWord)
-            OR LOWER(CategoryName) LIKE LOWER(@SearchWord) THEN 2
-          WHEN LOWER(Title) LIKE LOWER(@Search)
-            OR LOWER(Description) LIKE LOWER(@Search)
-            OR LOWER(UploaderName) LIKE LOWER(@Search)
-            OR LOWER(CategoryName) LIKE LOWER(@Search) THEN 3
+          WHEN LOWER(v.tieu_de) = LOWER(@SearchExact)
+            OR LOWER(u.ten_dang_nhap) = LOWER(@SearchExact) THEN 0
+          WHEN LOWER(v.tieu_de) LIKE LOWER(@SearchPrefix)
+            OR LOWER(u.ten_dang_nhap) LIKE LOWER(@SearchPrefix) THEN 1
+          WHEN LOWER(v.tieu_de) LIKE LOWER(@SearchWord)
+            OR LOWER(u.ten_dang_nhap) LIKE LOWER(@SearchWord) THEN 2
+          WHEN LOWER(v.tieu_de) LIKE LOWER(@Search)
+            OR LOWER(u.ten_dang_nhap) LIKE LOWER(@Search) THEN 3
           ELSE 4
-        END, (LuotXem + (SoLike * 5) + (SoBinhLuan * 10)) DESC, Id DESC`;
+        END, (ISNULL(v.luot_xem, 0) + ((SELECT COUNT(*) FROM dbo.luot_thich WHERE video_id = v.video_id) * 5)) DESC, v.video_id DESC`;
     } else {
-      q += " ORDER BY Id DESC";
+      q += " ORDER BY v.video_id DESC";
     }
     
     // Đọc ra từ View (Nằm trong thư mục Views của SSMS)

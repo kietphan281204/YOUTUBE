@@ -481,6 +481,7 @@ async function loadVideos(categoryId = null, query = "") {
         const params = new URLSearchParams();
         if (categoryId) params.append("categoryId", categoryId);
         if (query) params.append("q", query);
+        if (currentUser?.nguoi_dung_id) params.append("nguoi_dung_id", currentUser.nguoi_dung_id);
         url += params.toString();
         const res = await apiFetch(url);
         const data = await parseJsonResponse(res);
@@ -517,7 +518,8 @@ async function loadTrendingVideos() {
     if (!container) return;
     container.innerHTML = "";
     try {
-        const res = await apiFetch("/api/videos/trending");
+        const userId = currentUser?.nguoi_dung_id ? `?nguoi_dung_id=${currentUser.nguoi_dung_id}` : "";
+        const res = await apiFetch(`/api/videos/trending${userId}`);
         if (res.status === 404) {
             setTrendingStatus(
                 "API chưa có /api/videos/trending (404). git pull → npm run dev → cập nhật ngrok + config.js.",

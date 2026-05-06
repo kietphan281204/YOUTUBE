@@ -101,11 +101,20 @@
                     countDisplay.textContent = `Số video đã đăng: ${data.videos.length}`;
                     
                     if (data.videos.length > 0) {
-                        // Lấy tên người đăng từ video đầu tiên (nếu API history chưa có info user riêng)
-                        // Trong server.js route history đã có thông tin này
-                        nameDisplay.textContent = "Người dùng: " + (data.videos[0].TenDangNhap || "User #" + userId);
+                        const firstVideo = data.videos[0];
+                        nameDisplay.textContent = "Người dùng: " + (firstVideo.TenDangNhap || "User #" + userId);
                         
-                        const avatarUrl = data.videos[0].Avatar ? apiUrl(data.videos[0].Avatar) : "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+                        // Hiển thị thêm tuổi nếu có
+                        if (firstVideo.DoTuoi) {
+                            const agePara = document.createElement("p");
+                            agePara.textContent = `Tuổi: ${firstVideo.DoTuoi}`;
+                            agePara.style.color = "#333";
+                            agePara.style.fontWeight = "bold";
+                            agePara.style.marginTop = "5px";
+                            document.querySelector(".userInfo").appendChild(agePara);
+                        }
+
+                        const avatarUrl = firstVideo.Avatar ? apiUrl(firstVideo.Avatar) : "https://cdn-icons-png.flaticon.com/512/149/149071.png";
                         avatar.innerHTML = `<img src="${avatarUrl}" alt="Avatar" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
                         avatar.style.background = "transparent";
 

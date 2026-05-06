@@ -65,7 +65,7 @@ window.addEventListener("DOMContentLoaded", () => {
             const password = document.getElementById("password")?.value;
             const email = document.getElementById("email")?.value.trim();
             const avatarFile = document.getElementById("avatarFile")?.files[0];
-            const ageRange = document.getElementById("ageRange")?.value;
+            const ageVal = document.getElementById("ageInput")?.value;
 
             if (!username || !password) {
                 setAuthStatus("Vui lòng điền đầy đủ username và mật khẩu.", true);
@@ -92,7 +92,7 @@ window.addEventListener("DOMContentLoaded", () => {
                     formData.append("ten_dang_nhap", username);
                     formData.append("password", password);
                     formData.append("email", email || "");
-                    formData.append("do_tuoi", ageRange || "tren18");
+                    formData.append("do_tuoi", ageVal || "18");
                     if (avatarFile) {
                         formData.append("avatar", avatarFile);
                     }

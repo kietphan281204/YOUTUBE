@@ -23,6 +23,37 @@ async function ensureColumnsExist() {
       BEGIN
         ALTER TABLE dbo.video ADD danh_cho_tre_em BIT NULL DEFAULT 1;
       END
+      -- Cập nhật tuổi mặc định cho các user cũ đang bị NULL
+      UPDATE dbo.nguoi_dung SET do_tuoi = N'18' WHERE do_tuoi IS NULL;
+
+      -- Sửa lại View phù hợp độ tuổi
+      IF EXISTS (SELECT * FROM sys.views WHERE object_id = OBJECT_ID(N'dbo.vw_video_phu_hop_do_tuoi'))
+      BEGIN
+        DROP VIEW dbo.vw_video_phu_hop_do_tuoi;
+      END
+      EXEC('
+        CREATE VIEW dbo.vw_video_phu_hop_do_tuoi AS
+        SELECT 
+            v.video_id AS ma_video,
+            v.tieu_de,
+            v.mo_ta,
+            v.duong_dan_video,
+            v.duong_dan_anh_bia AS anh_thumbnail,
+            v.luot_xem,
+            (SELECT COUNT(*) FROM dbo.luot_thich WHERE video_id = v.video_id) AS luot_thich,
+            CASE WHEN v.danh_cho_tre_em = 1 THEN N''Dưới 18'' ELSE N''Trên 18'' END AS do_tuoi_phu_hop,
+            v.ngay_tao,
+            u.nguoi_dung_id AS ma_nguoi_dung,
+            u.ten_dang_nhap,
+            u.do_tuoi AS tuoi_nguoi_dung,
+            CASE 
+                WHEN v.danh_cho_tre_em = 1 THEN N''Phù hợp''
+                WHEN TRY_CAST(u.do_tuoi AS INT) >= 18 THEN N''Phù hợp''
+                ELSE N''Không phù hợp''
+            END AS phu_hop
+        FROM dbo.video v
+        CROSS JOIN dbo.nguoi_dung u
+      ');
     `);
     console.log("[db] Checked/Added missing columns: do_tuoi, danh_cho_tre_em");
   } catch (err) {
@@ -510,7 +541,19 @@ app.get("/api/videos", async (req, res) => {
     const catId = Number(req.query.categoryId);
     const searchQuery = String(req.query.q || "").trim();
     const pool = await sql.connect(sqlConfig);
+
+    // Lấy tuổi của người đang xem để lọc video
+    let viewerAge = 0; // Mặc định là trẻ em nếu chưa đăng nhập
+    const viewerId = Number(req.query?.nguoi_dung_id);
+    if (Number.isFinite(viewerId) && viewerId > 0) {
+      const uRes = await pool.request().input("ViewerId", sql.Int, viewerId).query("SELECT do_tuoi FROM dbo.nguoi_dung WHERE nguoi_dung_id = @ViewerId");
+      const ageStr = uRes.recordset?.[0]?.do_tuoi;
+      viewerAge = parseInt(ageStr) || 0;
+    }
+
     const request = pool.request();
+    request.input("ViewerAge", sql.Int, viewerAge);
+
     let q = `
       SELECT TOP (100) 
         v.video_id AS Id, 
@@ -527,6 +570,8 @@ app.get("/api/videos", async (req, res) => {
       FROM dbo.video v
       LEFT JOIN dbo.nguoi_dung u ON v.nguoi_dung_id = u.nguoi_dung_id
       WHERE v.trang_thai = N'da_duyet'
+      -- Lọc theo độ tuổi: nếu video không dành cho trẻ em (0) thì viewer phải >= 18
+      AND (v.danh_cho_tre_em = 1 OR @ViewerAge >= 18)
     `;
     
     if (Number.isFinite(catId) && catId > 0) {
@@ -580,7 +625,8 @@ app.get("/api/videos/history/:userId", async (req, res) => {
           "ISNULL((SELECT COUNT(*) FROM dbo.binh_luan bl WHERE bl.video_id = l.video_id), 0) AS SoBinhLuan, " +
           "l.thoi_gian_dang AS UploadedAt, " +
           "u.ten_dang_nhap AS TenDangNhap, " +
-          "u.anh_dai_dien AS Avatar " +
+          "u.anh_dai_dien AS Avatar, " +
+          "u.do_tuoi AS DoTuoi " +
           "FROM dbo.lich_su_dang_video l " +
           "LEFT JOIN dbo.video v ON l.video_id = v.video_id " +
           "LEFT JOIN dbo.nguoi_dung u ON l.nguoi_dung_id = u.nguoi_dung_id " +
@@ -600,19 +646,29 @@ app.get("/api/videos/history/:userId", async (req, res) => {
  */
 async function fetchTrendingVideos(req) {
   const pool = await sql.connect(sqlConfig);
-  const result = await pool
-    .request()
-    .query(
-      "SELECT TOP (50) " +
-        "v.video_id AS Id, v.tieu_de AS Title, v.mo_ta AS Description, v.duong_dan_video AS RelativeUrl, " +
-        "v.ngay_tao AS UploadedAt, v.luot_xem AS LuotXem, " +
-        "v.so_like AS SoLike, v.so_binh_luan AS SoBinhLuan, v.diem_xu_huong AS DiemXuHuong, " +
-        "u.ten_dang_nhap AS TenDangNhap, u.anh_dai_dien AS Avatar, u.nguoi_dung_id AS NguoiDungId " +
-        "FROM dbo.video_xu_huong v " +
-        "LEFT JOIN dbo.video vid ON v.video_id = vid.video_id " +
-        "LEFT JOIN dbo.nguoi_dung u ON vid.nguoi_dung_id = u.nguoi_dung_id " +
-        "ORDER BY v.diem_xu_huong DESC"
-    );
+    const viewerId = Number(req.query?.nguoi_dung_id);
+    let viewerAge = 0;
+    if (Number.isFinite(viewerId) && viewerId > 0) {
+      const uRes = await pool.request().input("ViewerId", sql.Int, viewerId).query("SELECT do_tuoi FROM dbo.nguoi_dung WHERE nguoi_dung_id = @ViewerId");
+      const ageStr = uRes.recordset?.[0]?.do_tuoi;
+      viewerAge = parseInt(ageStr) || 0;
+    }
+
+    const result = await pool
+      .request()
+      .input("ViewerAge", sql.Int, viewerAge)
+      .query(
+        "SELECT TOP (50) " +
+          "v.video_id AS Id, v.tieu_de AS Title, v.mo_ta AS Description, v.duong_dan_video AS RelativeUrl, " +
+          "v.ngay_tao AS UploadedAt, v.luot_xem AS LuotXem, " +
+          "v.so_like AS SoLike, v.so_binh_luan AS SoBinhLuan, v.diem_xu_huong AS DiemXuHuong, " +
+          "u.ten_dang_nhap AS TenDangNhap, u.anh_dai_dien AS Avatar, u.nguoi_dung_id AS NguoiDungId " +
+          "FROM dbo.video_xu_huong v " +
+          "LEFT JOIN dbo.video vid ON v.video_id = vid.video_id " +
+          "LEFT JOIN dbo.nguoi_dung u ON vid.nguoi_dung_id = u.nguoi_dung_id " +
+          "WHERE (vid.danh_cho_tre_em = 1 OR @ViewerAge >= 18) " +
+          "ORDER BY v.diem_xu_huong DESC"
+      );
   const rows = (result.recordset || []).map((r) => {
     const base = videoFromRow(r);
     return {
@@ -882,7 +938,8 @@ app.get("/api/videos/:id", async (req, res) => {
       .query(
         "SELECT v.video_id AS Id, v.tieu_de AS Title, v.mo_ta AS Description, " +
           "v.duong_dan_video AS RelativeUrl, v.luot_xem AS LuotXem, v.ngay_tao AS UploadedAt, " +
-          "v.danh_muc_id AS CategoryId, v.nguoi_dung_id AS NguoiDungId, u.ten_dang_nhap AS TenDangNhap, u.anh_dai_dien AS Avatar " +
+          "v.danh_muc_id AS CategoryId, v.nguoi_dung_id AS NguoiDungId, v.danh_cho_tre_em AS ForKids, " +
+          "u.ten_dang_nhap AS TenDangNhap, u.anh_dai_dien AS Avatar " +
           "FROM dbo.video v " +
           "LEFT JOIN dbo.nguoi_dung u ON v.nguoi_dung_id = u.nguoi_dung_id " +
           "WHERE v.video_id = @Id"
@@ -890,6 +947,19 @@ app.get("/api/videos/:id", async (req, res) => {
     const row = result.recordset?.[0];
     if (!row) return res.status(404).json({ ok: false, error: "Không tìm thấy video." });
     
+    // Kiểm tra độ tuổi người xem
+    const viewerId = Number(req.query?.nguoi_dung_id);
+    let viewerAge = 0;
+    if (Number.isFinite(viewerId) && viewerId > 0) {
+      const uRes = await pool.request().input("ViewerId", sql.Int, viewerId).query("SELECT do_tuoi FROM dbo.nguoi_dung WHERE nguoi_dung_id = @ViewerId");
+      viewerAge = parseInt(uRes.recordset?.[0]?.do_tuoi) || 0;
+    }
+    
+    // Nếu video KHÔNG dành cho trẻ em (ForKids = 0) và viewer < 18 tuổi
+    if ((row.ForKids === 0 || row.ForKids === false) && viewerAge < 18) {
+      return res.status(403).json({ ok: false, error: "Video này không dành cho lứa tuổi của bạn (yêu cầu trên 18 tuổi)." });
+    }
+
     const videoData = videoFromRow(row);
     videoData.NguoiDungId = row.NguoiDungId;
     videoData.TenDangNhap = row.TenDangNhap;

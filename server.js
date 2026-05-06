@@ -142,7 +142,8 @@ function mapNguoiDungRow(row) {
     nguoi_dung_id: row.nguoi_dung_id || row.id,
     ten_dang_nhap: row.ten_dang_nhap || row.username,
     email: row.email,
-    anh_dai_dien: row.anh_dai_dien || row.avatar_url || null
+    anh_dai_dien: row.anh_dai_dien || row.avatar_url || null,
+    do_tuoi: row.do_tuoi
   };
 }
 
@@ -428,7 +429,7 @@ app.post("/api/auth/login", async (req, res) => {
       .request()
       .input("Login", sql.NVarChar(255), login)
       .query(
-        "SELECT TOP (1) nguoi_dung_id, ten_dang_nhap, email, mat_khau_hash, anh_dai_dien " +
+        "SELECT TOP (1) nguoi_dung_id, ten_dang_nhap, email, mat_khau_hash, anh_dai_dien, do_tuoi " +
           "FROM dbo.nguoi_dung " +
           "WHERE ten_dang_nhap = @Login OR email = @Login"
       );

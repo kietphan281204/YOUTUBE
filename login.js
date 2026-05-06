@@ -33,6 +33,10 @@ function showLoggedState(user) {
             logged.style.display = "block";
             document.getElementById("displayUser").textContent = user.ten_dang_nhap || "Người dùng";
             document.getElementById("displayEmail").textContent = user.email || "";
+            // Hiển thị tuổi
+            const ageDisplay = document.getElementById("displayAge");
+            if (ageDisplay) ageDisplay.textContent = user.do_tuoi || "Chưa cập nhật";
+
             // Hiển thị ảnh đại diện
             const avatarImg = document.getElementById("userAvatar");
             if (user.anh_dai_dien) {
@@ -172,3 +176,43 @@ window.addEventListener("DOMContentLoaded", () => {
     });
 
 });
+
+async function updateAge() {
+    const ageInput = document.getElementById("updateAgeInput");
+    const age = ageInput?.value;
+    if (!age || age < 7 || age > 120) {
+        alert("Vui lòng nhập tuổi hợp lệ (7-120).");
+        return;
+    }
+
+    const saved = localStorage.getItem("current_user") || localStorage.getItem("currentUser");
+    if (!saved) return;
+    const user = JSON.parse(saved);
+    const userId = user.nguoi_dung_id || user.id;
+
+    const statusEl = document.getElementById("ageUpdateStatus");
+    statusEl.textContent = "Đang cập nhật...";
+    statusEl.style.color = "#666";
+
+    try {
+        const res = await fetch(apiUrl("/api/auth/update-age"), {
+            method: "POST",
+            headers: { 
+                "Content-Type": "application/json",
+                "ngrok-skip-browser-warning": "1" 
+            },
+            body: JSON.stringify({ nguoi_dung_id: userId, do_tuoi: age })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) throw new Error(data.error || "Lỗi cập nhật tuổi.");
+
+        localStorage.setItem("current_user", JSON.stringify(data.user));
+        showLoggedState(data.user);
+        statusEl.textContent = "Cập nhật thành công!";
+        statusEl.style.color = "#2ed573";
+        setTimeout(() => statusEl.textContent = "", 3000);
+    } catch (e) {
+        statusEl.textContent = "Lỗi: " + e.message;
+        statusEl.style.color = "#ff4757";
+    }
+}

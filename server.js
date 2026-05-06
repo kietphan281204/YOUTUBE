@@ -474,6 +474,36 @@ app.post("/api/auth/update-avatar", upload.single("avatar"), async (req, res) =>
   }
 });
 
+app.post("/api/auth/update-age", async (req, res) => {
+  try {
+    const userId = Number(req.body.nguoi_dung_id);
+    const newAge = String(req.body.do_tuoi || "").trim().slice(0, 50);
+
+    if (!Number.isFinite(userId) || userId <= 0 || !newAge) {
+      return res.status(400).json({ ok: false, error: "Dữ liệu không hợp lệ." });
+    }
+
+    const pool = await sql.connect(sqlConfig);
+    const result = await pool
+      .request()
+      .input("Uid", sql.Int, userId)
+      .input("Age", sql.NVarChar(50), newAge)
+      .query(
+        "UPDATE dbo.nguoi_dung SET do_tuoi = @Age, ngay_cap_nhat = GETUTCDATE() " +
+        "OUTPUT INSERTED.nguoi_dung_id, INSERTED.ten_dang_nhap, INSERTED.email, INSERTED.anh_dai_dien, INSERTED.do_tuoi " +
+        "WHERE nguoi_dung_id = @Uid"
+      );
+
+    if (result.rowsAffected[0] === 0) {
+      return res.status(404).json({ ok: false, error: "Không tìm thấy người dùng." });
+    }
+
+    return res.json({ ok: true, user: mapNguoiDungRow(result.recordset?.[0] || null) });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err?.message || String(err) });
+  }
+});
+
 app.get("/api/categories", async (_req, res) => {
   try {
     const pool = await sql.connect(sqlConfig);

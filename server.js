@@ -11,6 +11,26 @@ require("dotenv").config();
 
 const { sqlConfig } = require("./sql.config");
 
+async function ensureColumnsExist() {
+  try {
+    const pool = await sql.connect(sqlConfig);
+    await pool.request().query(`
+      IF COL_LENGTH('dbo.nguoi_dung', 'do_tuoi') IS NULL
+      BEGIN
+        ALTER TABLE dbo.nguoi_dung ADD do_tuoi NVARCHAR(50) NULL;
+      END
+      IF COL_LENGTH('dbo.video', 'danh_cho_tre_em') IS NULL
+      BEGIN
+        ALTER TABLE dbo.video ADD danh_cho_tre_em BIT NULL DEFAULT 1;
+      END
+    `);
+    console.log("[db] Checked/Added missing columns: do_tuoi, danh_cho_tre_em");
+  } catch (err) {
+    console.error("[db] Error ensuring columns exist:", err.message);
+  }
+}
+ensureColumnsExist();
+
 const app = express();
 
 // Sau ngrok, client IP thường nằm trong `x-forwarded-for`.
@@ -325,6 +345,7 @@ app.post("/api/auth/register", upload.single("avatar"), async (req, res) => {
     const tenDangNhap = String(req.body?.ten_dang_nhap || req.body?.username || "").trim().slice(0, 255);
     const email = String(req.body?.email || "").trim().slice(0, 255);
     const password = String(req.body?.password || "").trim();
+    const doTuoi = String(req.body?.do_tuoi || "tren18").trim().slice(0, 50);
 
     if (!tenDangNhap || !password) {
       return res.status(400).json({
@@ -341,10 +362,11 @@ app.post("/api/auth/register", upload.single("avatar"), async (req, res) => {
       .input("Email", sql.NVarChar(255), email)
       .input("MatKhauHash", sql.NVarChar(255), hashPassword(password))
       .input("Avatar", sql.NVarChar(500), avatarUrl)
+      .input("DoTuoi", sql.NVarChar(50), doTuoi)
       .query(
-        "INSERT INTO dbo.nguoi_dung (ten_dang_nhap, email, mat_khau_hash, anh_dai_dien, ngay_tao, ngay_cap_nhat) " +
-          "OUTPUT INSERTED.nguoi_dung_id, INSERTED.ten_dang_nhap, INSERTED.email, INSERTED.anh_dai_dien " +
-          "VALUES (@TenDangNhap, @Email, @MatKhauHash, @Avatar, GETUTCDATE(), GETUTCDATE())"
+        "INSERT INTO dbo.nguoi_dung (ten_dang_nhap, email, mat_khau_hash, anh_dai_dien, do_tuoi, ngay_tao, ngay_cap_nhat) " +
+          "OUTPUT INSERTED.nguoi_dung_id, INSERTED.ten_dang_nhap, INSERTED.email, INSERTED.anh_dai_dien, INSERTED.do_tuoi " +
+          "VALUES (@TenDangNhap, @Email, @MatKhauHash, @Avatar, @DoTuoi, GETUTCDATE(), GETUTCDATE())"
       );
 
     return res.json({ ok: true, user: mapNguoiDungRow(inserted.recordset?.[0] || null) });
@@ -500,7 +522,8 @@ app.get("/api/videos", async (req, res) => {
         (SELECT COUNT(*) FROM dbo.luot_thich lt WHERE lt.video_id = v.video_id) AS SoLike,
         (SELECT COUNT(*) FROM dbo.binh_luan bl WHERE bl.video_id = v.video_id) AS SoBinhLuan,
         u.ten_dang_nhap AS TenDangNhap,
-        u.anh_dai_dien AS Avatar
+        u.anh_dai_dien AS Avatar,
+        u.nguoi_dung_id AS NguoiDungId
       FROM dbo.video v
       LEFT JOIN dbo.nguoi_dung u ON v.nguoi_dung_id = u.nguoi_dung_id
       WHERE v.trang_thai = N'da_duyet'
@@ -584,7 +607,7 @@ async function fetchTrendingVideos(req) {
         "v.video_id AS Id, v.tieu_de AS Title, v.mo_ta AS Description, v.duong_dan_video AS RelativeUrl, " +
         "v.ngay_tao AS UploadedAt, v.luot_xem AS LuotXem, " +
         "v.so_like AS SoLike, v.so_binh_luan AS SoBinhLuan, v.diem_xu_huong AS DiemXuHuong, " +
-        "u.ten_dang_nhap AS TenDangNhap, u.anh_dai_dien AS Avatar " +
+        "u.ten_dang_nhap AS TenDangNhap, u.anh_dai_dien AS Avatar, u.nguoi_dung_id AS NguoiDungId " +
         "FROM dbo.video_xu_huong v " +
         "LEFT JOIN dbo.video vid ON v.video_id = vid.video_id " +
         "LEFT JOIN dbo.nguoi_dung u ON vid.nguoi_dung_id = u.nguoi_dung_id " +
@@ -1368,6 +1391,8 @@ app.post("/api/videos", upload.single("video"), async (req, res) => {
 
     const danhMucIdRaw = getMultipartField(req.body, ["danh_muc_id", "categoryId"]);
     const danhMucId = (Number.isFinite(Number(danhMucIdRaw)) && Number(danhMucIdRaw) > 0) ? Number(danhMucIdRaw) : null;
+    const forKidsRaw = getMultipartField(req.body, ["forKids", "forkids"]);
+    const forKids = forKidsRaw === "yes" ? 1 : 0;
 
     const insert = await pool
       .request()
@@ -1377,11 +1402,12 @@ app.post("/api/videos", upload.single("video"), async (req, res) => {
       .input("Duration", sql.Int, durationSeconds)
       .input("Path", sql.NVarChar(500), relativeUrl)
       .input("DanhMucId", sql.Int, danhMucId)
+      .input("ForKids", sql.Bit, forKids)
       .query(
         "DECLARE @T TABLE (Id INT, Title NVARCHAR(255), Description NVARCHAR(MAX), RelativeUrl NVARCHAR(500), UploadedAt DATETIME); " +
-        "INSERT INTO dbo.video (nguoi_dung_id, tieu_de, mo_ta, duong_dan_video, duong_dan_anh_bia, thoi_luong, luot_xem, ngay_tao, ngay_cap_nhat, danh_muc_id, tag_id, trang_thai) " +
+        "INSERT INTO dbo.video (nguoi_dung_id, tieu_de, mo_ta, duong_dan_video, duong_dan_anh_bia, thoi_luong, luot_xem, ngay_tao, ngay_cap_nhat, danh_muc_id, tag_id, trang_thai, danh_cho_tre_em) " +
           "OUTPUT INSERTED.video_id AS Id, INSERTED.tieu_de AS Title, INSERTED.mo_ta AS Description, INSERTED.duong_dan_video AS RelativeUrl, INSERTED.ngay_tao AS UploadedAt INTO @T " +
-          "VALUES (@NguoiDungId, @Title, NULLIF(@Description, N''), @Path, @Path, @Duration, CAST(0 AS BIGINT), GETUTCDATE(), GETUTCDATE(), @DanhMucId, NULL, N'cho_duyet'); " +
+          "VALUES (@NguoiDungId, @Title, NULLIF(@Description, N''), @Path, @Path, @Duration, CAST(0 AS BIGINT), GETUTCDATE(), GETUTCDATE(), @DanhMucId, NULL, N'cho_duyet', @ForKids); " +
         "SELECT * FROM @T;"
       );
 

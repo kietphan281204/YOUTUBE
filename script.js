@@ -115,6 +115,8 @@ function renderVideoCard(v) {
     card.style.cursor = "pointer";
     card.title = "Xem chi tiết và bình luận";
 
+    const uploaderId = v.NguoiDungId ?? v.nguoi_dung_id;
+
     // Video container
     const video = document.createElement("video");
     video.src = apiUrl(v.RelativeUrl);
@@ -141,9 +143,9 @@ function renderVideoCard(v) {
     avatarImg.style.flexShrink = "0";
     avatarImg.onerror = () => { avatarImg.src = "https://cdn-icons-png.flaticon.com/512/149/149071.png"; };
     
-    if (v.NguoiDungId) {
+    if (uploaderId) {
         const avatarLink = document.createElement("a");
-        avatarLink.href = `user.html?id=${v.NguoiDungId}`;
+        avatarLink.href = `user.html?id=${uploaderId}`;
         avatarLink.onclick = (e) => e.stopPropagation();
         avatarLink.appendChild(avatarImg);
         infoContainer.appendChild(avatarLink);
@@ -172,9 +174,9 @@ function renderVideoCard(v) {
     // Uploader Name
     const uploader = document.createElement("div");
     uploader.className = "uploaderName";
-    if (v.NguoiDungId) {
+    if (uploaderId) {
         const userLink = document.createElement("a");
-        userLink.href = `user.html?id=${v.NguoiDungId}`;
+        userLink.href = `user.html?id=${uploaderId}`;
         userLink.textContent = v.TenDangNhap || "Người dùng ẩn danh";
         userLink.style.textDecoration = "none";
         userLink.style.color = "inherit";
@@ -696,6 +698,7 @@ async function uploadVideo() {
         const titleVal = (titleInput?.value || "").trim();
         const descVal = (descriptionInput.value || "").trim();
         const categoryVal = document.getElementById("categoryInput")?.value;
+        const forKids = document.querySelector('input[name="forKids"]:checked')?.value || "yes";
 
         const form = new FormData();
         // Một field JSON: multer luôn đọc được; không phụ thuộc tên field lạ.
@@ -709,6 +712,7 @@ async function uploadVideo() {
         form.append("title", titleVal);
         form.append("mo_ta", descVal);
         if (categoryVal) form.append("categoryId", categoryVal);
+        form.append("forKids", forKids);
         form.append("thoi_luong", String(durationSeconds));
         if (Number.isFinite(Number(currentUser?.nguoi_dung_id))) {
             form.append("nguoi_dung_id", String(currentUser.nguoi_dung_id));

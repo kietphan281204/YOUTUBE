@@ -42,6 +42,17 @@
                 <button type="button" onclick="addCustomTag()" style="padding: 6px 12px; border: none; background: #007bff; color: white; border-radius: 4px; cursor: pointer;">Thêm Tag</button>
             </div>
         </div>
+        <div style="margin-bottom: 15px; width:min(520px,100%);">
+            <div style="font-size:14px; font-weight:bold; margin-bottom:8px;">Khán giả:</div>
+            <div style="display:flex; gap:15px; align-items:center;">
+                <label style="display:flex; align-items:center; gap:5px; cursor:pointer;">
+                    <input type="radio" name="forKids" value="yes" checked> Video dành cho trẻ em
+                </label>
+                <label style="display:flex; align-items:center; gap:5px; cursor:pointer;">
+                    <input type="radio" name="forKids" value="no"> Video không dành cho trẻ em
+                </label>
+            </div>
+        </div>
         <input type="file" id="videoInput" accept="video/*">
         <button id="uploadBtn" onclick="uploadVideo()">Tải lên ngay</button>
         <div id="status" style="margin-top:10px;"></div>

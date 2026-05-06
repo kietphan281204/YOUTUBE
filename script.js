@@ -115,60 +115,110 @@ function renderVideoCard(v) {
     card.style.cursor = "pointer";
     card.title = "Xem chi tiết và bình luận";
 
-    const title = document.createElement("div");
-    title.className = "videoTitle";
-    title.textContent = v.Title || v.FileName || "Video";
-
-    const descriptionText = pickVideoDescription(v);
-    let description = null;
-    if (descriptionText) {
-        description = document.createElement("div");
-        description.className = "videoDescription";
-        description.textContent = descriptionText;
-    }
-
+    // Video container
     const video = document.createElement("video");
-    // If frontend and backend are different origins, RelativeUrl is like "/uploads/.."
-    // so we must prefix it with API_BASE.
     video.src = apiUrl(v.RelativeUrl);
     video.controls = true;
     video.addEventListener("click", (e) => e.stopPropagation());
+    card.appendChild(video);
 
+    // Info container (Avatar + Text)
+    const infoContainer = document.createElement("div");
+    infoContainer.className = "videoCardInfo";
+    infoContainer.style.display = "flex";
+    infoContainer.style.gap = "12px";
+    infoContainer.style.marginTop = "12px";
+
+    // Avatar
+    const avatarImg = document.createElement("img");
+    const avatarUrl = v.Avatar ? apiUrl(v.Avatar) : "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+    avatarImg.src = avatarUrl;
+    avatarImg.className = "uploaderAvatar";
+    avatarImg.style.width = "36px";
+    avatarImg.style.height = "36px";
+    avatarImg.style.borderRadius = "50%";
+    avatarImg.style.objectFit = "cover";
+    avatarImg.style.flexShrink = "0";
+    avatarImg.onerror = () => { avatarImg.src = "https://cdn-icons-png.flaticon.com/512/149/149071.png"; };
+    
+    if (v.NguoiDungId) {
+        const avatarLink = document.createElement("a");
+        avatarLink.href = `user.html?id=${v.NguoiDungId}`;
+        avatarLink.onclick = (e) => e.stopPropagation();
+        avatarLink.appendChild(avatarImg);
+        infoContainer.appendChild(avatarLink);
+    } else {
+        infoContainer.appendChild(avatarImg);
+    }
+
+    // Text container
+    const textContainer = document.createElement("div");
+    textContainer.style.flex = "1";
+    textContainer.style.overflow = "hidden";
+
+    // Title
+    const title = document.createElement("div");
+    title.className = "videoTitle";
+    title.textContent = v.Title || v.FileName || "Video";
+    title.style.margin = "0 0 4px 0";
+    title.style.fontSize = "16px";
+    title.style.lineHeight = "1.4";
+    title.style.display = "-webkit-box";
+    title.style.webkitLineClamp = "2";
+    title.style.webkitBoxOrient = "vertical";
+    title.style.overflow = "hidden";
+    textContainer.appendChild(title);
+
+    // Uploader Name
+    const uploader = document.createElement("div");
+    uploader.className = "uploaderName";
+    if (v.NguoiDungId) {
+        const userLink = document.createElement("a");
+        userLink.href = `user.html?id=${v.NguoiDungId}`;
+        userLink.textContent = v.TenDangNhap || "Người dùng ẩn danh";
+        userLink.style.textDecoration = "none";
+        userLink.style.color = "inherit";
+        userLink.onclick = (e) => e.stopPropagation();
+        uploader.appendChild(userLink);
+    } else {
+        uploader.textContent = v.TenDangNhap || "Người dùng ẩn danh";
+    }
+    uploader.style.fontSize = "13px";
+    uploader.style.color = "#606060";
+    uploader.style.marginBottom = "2px";
+    textContainer.appendChild(uploader);
+
+    // Metadata (Views + Date)
     const meta = document.createElement("div");
     meta.className = "videoMeta";
     
     let dateStr = "";
     if (v.UploadedAt) {
         const date = new Date(v.UploadedAt);
-        dateStr = date.toLocaleString("vi-VN", {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false
-        });
+        dateStr = date.toLocaleDateString("vi-VN");
     }
 
-    let metaLine = dateStr;
+    let metaLine = "";
     const stats = [];
     if (v.LuotXem != null) stats.push(`${v.LuotXem} lượt xem`);
-    if (v.SoLike != null) stats.push(`${v.SoLike} thích`);
-    if (v.SoBinhLuan != null) stats.push(`${v.SoBinhLuan} BL`);
     if (stats.length) {
-        metaLine += (metaLine ? " · " : "") + stats.join(" · ");
+        metaLine = stats.join(" · ") + (dateStr ? " · " + dateStr : "");
+    } else {
+        metaLine = dateStr;
     }
     meta.textContent = metaLine;
+    meta.style.fontSize = "13px";
+    meta.style.color = "#606060";
+    textContainer.appendChild(meta);
+
+    infoContainer.appendChild(textContainer);
+    card.appendChild(infoContainer);
 
     const id = v.Id ?? v.id;
     card.addEventListener("click", () => {
         if (id != null) window.location.href = `video.html?id=${encodeURIComponent(String(id))}`;
     });
 
-    card.appendChild(title);
-    if (description) card.appendChild(description);
-    card.appendChild(video);
-    card.appendChild(meta);
     return card;
 }
 

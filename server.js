@@ -499,7 +499,8 @@ app.get("/api/videos", async (req, res) => {
         v.luot_xem AS LuotXem,
         (SELECT COUNT(*) FROM dbo.luot_thich lt WHERE lt.video_id = v.video_id) AS SoLike,
         (SELECT COUNT(*) FROM dbo.binh_luan bl WHERE bl.video_id = v.video_id) AS SoBinhLuan,
-        u.ten_dang_nhap AS TenDangNhap
+        u.ten_dang_nhap AS TenDangNhap,
+        u.anh_dai_dien AS Avatar
       FROM dbo.video v
       LEFT JOIN dbo.nguoi_dung u ON v.nguoi_dung_id = u.nguoi_dung_id
       WHERE v.trang_thai = N'da_duyet'
@@ -580,11 +581,14 @@ async function fetchTrendingVideos(req) {
     .request()
     .query(
       "SELECT TOP (50) " +
-        "video_id AS Id, tieu_de AS Title, mo_ta AS Description, duong_dan_video AS RelativeUrl, " +
-        "ngay_tao AS UploadedAt, luot_xem AS LuotXem, " +
-        "so_like AS SoLike, so_binh_luan AS SoBinhLuan, diem_xu_huong AS DiemXuHuong " +
-        "FROM dbo.video_xu_huong " +
-        "ORDER BY diem_xu_huong DESC"
+        "v.video_id AS Id, v.tieu_de AS Title, v.mo_ta AS Description, v.duong_dan_video AS RelativeUrl, " +
+        "v.ngay_tao AS UploadedAt, v.luot_xem AS LuotXem, " +
+        "v.so_like AS SoLike, v.so_binh_luan AS SoBinhLuan, v.diem_xu_huong AS DiemXuHuong, " +
+        "u.ten_dang_nhap AS TenDangNhap, u.anh_dai_dien AS Avatar " +
+        "FROM dbo.video_xu_huong v " +
+        "LEFT JOIN dbo.video vid ON v.video_id = vid.video_id " +
+        "LEFT JOIN dbo.nguoi_dung u ON vid.nguoi_dung_id = u.nguoi_dung_id " +
+        "ORDER BY v.diem_xu_huong DESC"
     );
   const rows = (result.recordset || []).map((r) => {
     const base = videoFromRow(r);

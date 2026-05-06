@@ -102,7 +102,7 @@ LEFT JOIN (SELECT video_id, COUNT(*) AS cnt FROM dbo.luot_thich GROUP BY video_i
   ON lc.video_id = v.video_id
 LEFT JOIN (SELECT video_id, COUNT(*) AS cnt FROM dbo.binh_luan GROUP BY video_id) cc 
   ON cc.video_id = v.video_id
-WHERE (ISNULL(v.luot_xem, 0) * 1 + ISNULL(lc.cnt, 0) * 5 + ISNULL(cc.cnt, 0) * 10) >= 50;
+WHERE v.trang_thai = N'da_duyet' AND (ISNULL(v.luot_xem, 0) * 1 + ISNULL(lc.cnt, 0) * 5 + ISNULL(cc.cnt, 0) * 10) >= 50;
 GO
 
 -- ========== BẢNG THẬT: TÍNH NĂNG LỊCH SỬ ĐĂNG VIDEO CỦA NGƯỜI DÙNG ==========
@@ -306,7 +306,8 @@ SELECT
     d.ten_danh_muc AS CategoryName
 FROM dbo.video v
 LEFT JOIN dbo.nguoi_dung u ON v.nguoi_dung_id = u.nguoi_dung_id
-LEFT JOIN dbo.danh_muc d ON v.danh_muc_id = d.danh_muc_id;
+LEFT JOIN dbo.danh_muc d ON v.danh_muc_id = d.danh_muc_id
+WHERE v.trang_thai = N'da_duyet';
 GO
 
 -- ========== BẢNG THỐNG KÊ CHI TIẾT THEO NGÀY ==========

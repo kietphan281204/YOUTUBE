@@ -502,30 +502,27 @@ app.get("/api/videos", async (req, res) => {
         u.ten_dang_nhap AS TenDangNhap
       FROM dbo.video v
       LEFT JOIN dbo.nguoi_dung u ON v.nguoi_dung_id = u.nguoi_dung_id
-      WHERE 1=1
+      WHERE v.trang_thai = N'da_duyet'
     `;
+    
     if (Number.isFinite(catId) && catId > 0) {
       q += " AND v.danh_muc_id = @CatId";
       request.input("CatId", sql.Int, catId);
     }
+    
     if (searchQuery) {
       q += " AND (v.tieu_de LIKE @Search OR v.mo_ta LIKE @Search OR u.ten_dang_nhap LIKE @Search)";
       request.input("Search", sql.NVarChar(255), `%${searchQuery}%`);
       request.input("SearchExact", sql.NVarChar(255), searchQuery);
       request.input("SearchPrefix", sql.NVarChar(255), `${searchQuery}%`);
       request.input("SearchWord", sql.NVarChar(255), `% ${searchQuery} %`);
+      
       q += ` ORDER BY
         CASE
-          WHEN LOWER(v.tieu_de) = LOWER(@SearchExact)
-            OR LOWER(u.ten_dang_nhap) = LOWER(@SearchExact) THEN 0
-          WHEN LOWER(v.tieu_de) LIKE LOWER(@SearchPrefix)
-            OR LOWER(u.ten_dang_nhap) LIKE LOWER(@SearchPrefix) THEN 1
-          WHEN LOWER(v.tieu_de) LIKE LOWER(@SearchWord)
-            OR LOWER(u.ten_dang_nhap) LIKE LOWER(@SearchWord) THEN 2
-          WHEN LOWER(v.tieu_de) LIKE LOWER(@Search)
-            OR LOWER(u.ten_dang_nhap) LIKE LOWER(@Search) THEN 3
-          ELSE 4
-        END, (ISNULL(v.luot_xem, 0) + ((SELECT COUNT(*) FROM dbo.luot_thich WHERE video_id = v.video_id) * 5)) DESC, v.video_id DESC`;
+          WHEN LOWER(v.tieu_de) = LOWER(@SearchExact) OR LOWER(u.ten_dang_nhap) = LOWER(@SearchExact) THEN 0
+          WHEN LOWER(v.tieu_de) LIKE LOWER(@SearchPrefix) OR LOWER(u.ten_dang_nhap) LIKE LOWER(@SearchPrefix) THEN 1
+          ELSE 2
+        END, v.video_id DESC`;
     } else {
       q += " ORDER BY v.video_id DESC";
     }
@@ -1378,9 +1375,9 @@ app.post("/api/videos", upload.single("video"), async (req, res) => {
       .input("DanhMucId", sql.Int, danhMucId)
       .query(
         "DECLARE @T TABLE (Id INT, Title NVARCHAR(255), Description NVARCHAR(MAX), RelativeUrl NVARCHAR(500), UploadedAt DATETIME); " +
-        "INSERT INTO dbo.video (nguoi_dung_id, tieu_de, mo_ta, duong_dan_video, duong_dan_anh_bia, thoi_luong, luot_xem, ngay_tao, ngay_cap_nhat, danh_muc_id, tag_id) " +
+        "INSERT INTO dbo.video (nguoi_dung_id, tieu_de, mo_ta, duong_dan_video, duong_dan_anh_bia, thoi_luong, luot_xem, ngay_tao, ngay_cap_nhat, danh_muc_id, tag_id, trang_thai) " +
           "OUTPUT INSERTED.video_id AS Id, INSERTED.tieu_de AS Title, INSERTED.mo_ta AS Description, INSERTED.duong_dan_video AS RelativeUrl, INSERTED.ngay_tao AS UploadedAt INTO @T " +
-          "VALUES (@NguoiDungId, @Title, NULLIF(@Description, N''), @Path, @Path, @Duration, CAST(0 AS BIGINT), GETUTCDATE(), GETUTCDATE(), @DanhMucId, NULL); " +
+          "VALUES (@NguoiDungId, @Title, NULLIF(@Description, N''), @Path, @Path, @Duration, CAST(0 AS BIGINT), GETUTCDATE(), GETUTCDATE(), @DanhMucId, NULL, N'cho_duyet'); " +
         "SELECT * FROM @T;"
       );
 

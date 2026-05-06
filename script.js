@@ -679,8 +679,9 @@ async function uploadVideo() {
         const data = await parseJsonResponse(res);
         if (!res.ok || !data.ok) throw new Error(data.error || "Upload failed");
 
-        const card = renderVideoCard(data.video);
-        if (container) container.prepend(card);
+        // Không hiển thị video ngay lập tức vì cần chờ admin duyệt
+        // const card = renderVideoCard(data.video);
+        // if (container) container.prepend(card);
 
         input.value = "";
         if (titleInput) titleInput.value = "";

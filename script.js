@@ -99,6 +99,8 @@ function updateUploadAccess() {
     if (historyBtn) historyBtn.style.display = canUpload ? "inline-block" : "none";
     const uploadPageBtn = document.getElementById("uploadPageBtn");
     if (uploadPageBtn) uploadPageBtn.style.display = canUpload ? "inline-block" : "none";
+    const subsPageBtn = document.getElementById("subsPageBtn");
+    if (subsPageBtn) subsPageBtn.style.display = canUpload ? "inline-block" : "none";
 }
 
 function pickVideoDescription(v) {

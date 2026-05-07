@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Kênh đã đăng ký</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .channel-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+            padding: 20px 0;
+        }
+        .channel-card {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            transition: 0.3s;
+            cursor: pointer;
+            border: 1px solid #eee;
+        }
+        .channel-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+        .channel-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            margin-bottom: 15px;
+            object-fit: cover;
+            border: 3px solid #764ba2;
+        }
+        .channel-name {
+            font-weight: bold;
+            font-size: 16px;
+            margin-bottom: 5px;
+            color: #333;
+        }
+        .channel-meta {
+            font-size: 13px;
+            color: #666;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 50px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1 style="cursor:pointer;" onclick="window.location.href='index.html'">Website Video</h1>
+        <div class="headerActions">
+            <button onclick="window.location.href='index.html'">← Trang chủ</button>
+            <div id="authStatus"></div>
+        </div>
+    </header>
+
+    <main style="max-width: 1200px; margin: 0 auto; padding: 20px;">
+        <h2 style="margin-bottom: 10px;">Kênh bạn đã đăng ký</h2>
+        <p style="color: #666; margin-bottom: 30px;">Danh sách những người sáng tạo nội dung bạn đang theo dõi.</p>
+        
+        <div id="channelContainer" class="channel-list">
+            <!-- Danh sách kênh sẽ hiện ở đây -->
+            <div class="empty-state">Đang tải danh sách kênh...</div>
+        </div>
+    </main>
+
+    <script src="config.js"></script>
+    <script src="script.js"></script>
+    <script>
+        window.addEventListener("DOMContentLoaded", async () => {
+            if (!currentUser) {
+                alert("Vui lòng đăng nhập để xem danh sách đăng ký.");
+                window.location.href = "login.html";
+                return;
+            }
+
+            const container = document.getElementById("channelContainer");
+
+            try {
+                const res = await apiFetch(`/api/subscriptions/${currentUser.nguoi_dung_id}`);
+                const data = await parseJsonResponse(res);
+
+                if (data.ok && Array.isArray(data.channels)) {
+                    container.innerHTML = "";
+                    
+                    if (data.channels.length === 0) {
+                        container.innerHTML = '<div class="empty-state">Bạn chưa đăng ký kênh nào. Hãy khám phá và ủng hộ các nhà sáng tạo nhé!</div>';
+                        return;
+                    }
+
+                    data.channels.forEach(ch => {
+                        const card = document.createElement("div");
+                        card.className = "channel-card";
+                        card.onclick = () => window.location.href = `user.html?id=${ch.nguoi_dung_id}`;
+
+                        const avatarUrl = ch.anh_dai_dien ? apiUrl(ch.anh_dai_dien) : "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+                        
+                        card.innerHTML = `
+                            <img src="${avatarUrl}" alt="${ch.ten_dang_nhap}" class="channel-avatar">
+                            <div class="channel-name">${ch.ten_dang_nhap}</div>
+                            <div class="channel-meta">${ch.SoVideo || 0} video</div>
+                        `;
+                        container.appendChild(card);
+                    });
+                } else {
+                    throw new Error(data.error || "Lỗi tải dữ liệu");
+                }
+            } catch (e) {
+                container.innerHTML = `<div class="empty-state" style="color: red;">Lỗi: ${e.message}</div>`;
+            }
+        });
+    </script>
+</body>
+</html>

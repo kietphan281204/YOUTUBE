@@ -569,6 +569,29 @@ app.get("/api/subscribe/status", async (req, res) => {
   }
 });
 
+app.get("/api/subscriptions/:userId", async (req, res) => {
+  try {
+    const userId = Number(req.params.userId);
+    if (!userId) return res.status(400).json({ ok: false, error: "Thiếu ID người dùng" });
+
+    const pool = await sql.connect(sqlConfig);
+    const result = await pool.request()
+      .input("Uid", sql.Int, userId)
+      .query(`
+        SELECT u.nguoi_dung_id, u.ten_dang_nhap, u.anh_dai_dien,
+        (SELECT COUNT(*) FROM dbo.video v WHERE v.nguoi_dung_id = u.nguoi_dung_id AND v.trang_thai = N'da_duyet') AS SoVideo
+        FROM dbo.dang_ky_kenh dk
+        JOIN dbo.nguoi_dung u ON dk.kenh_id = u.nguoi_dung_id
+        WHERE dk.nguoi_dung_id = @Uid
+        ORDER BY dk.ngay_dang_ky DESC
+      `);
+    
+    res.json({ ok: true, channels: result.recordset || [] });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 app.get("/api/categories", async (_req, res) => {
   try {
     const pool = await sql.connect(sqlConfig);

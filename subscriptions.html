@@ -49,6 +49,22 @@
             padding: 50px;
             color: #666;
         }
+        .unsub-btn {
+            margin-top: 15px;
+            padding: 8px 15px;
+            background: #f0f0f0;
+            color: #666;
+            border: none;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .unsub-btn:hover {
+            background: #e0e0e0;
+            color: #cc0000;
+        }
     </style>
 </head>
 <body>
@@ -73,7 +89,11 @@
     <script src="config.js"></script>
     <script src="script.js"></script>
     <script>
-        window.addEventListener("DOMContentLoaded", async () => {
+        async function loadSubscriptions() {
+            if (!currentUser && typeof loadCurrentUser === "function") {
+                currentUser = loadCurrentUser();
+            }
+            
             if (!currentUser) {
                 alert("Vui lòng đăng nhập để xem danh sách đăng ký.");
                 window.location.href = "login.html";
@@ -105,6 +125,7 @@
                             <img src="${avatarUrl}" alt="${ch.ten_dang_nhap}" class="channel-avatar">
                             <div class="channel-name">${ch.ten_dang_nhap}</div>
                             <div class="channel-meta">${ch.SoVideo || 0} video</div>
+                            <button class="unsub-btn" onclick="handleUnsubscribe(event, ${ch.nguoi_dung_id})">Hủy đăng ký</button>
                         `;
                         container.appendChild(card);
                     });
@@ -114,6 +135,30 @@
             } catch (e) {
                 container.innerHTML = `<div class="empty-state" style="color: red;">Lỗi: ${e.message}</div>`;
             }
+        }
+
+        async function handleUnsubscribe(event, channelId) {
+            event.stopPropagation(); // Ngăn việc chuyển trang khi nhấn nút
+            
+            if (!confirm("Bạn có chắc chắn muốn hủy đăng ký kênh này?")) return;
+
+            try {
+                const res = await apiFetch("/api/subscribe", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ subscriberId: currentUser.nguoi_dung_id, channelId: channelId })
+                });
+                const data = await parseJsonResponse(res);
+                if (data.ok) {
+                    loadSubscriptions(); // Tải lại danh sách
+                }
+            } catch (e) {
+                alert("Lỗi: " + e.message);
+            }
+        }
+
+        window.addEventListener("DOMContentLoaded", () => {
+            loadSubscriptions();
         });
     </script>
 </body>

@@ -54,10 +54,23 @@ async function ensureColumnsExist() {
         FROM dbo.video v
         CROSS JOIN dbo.nguoi_dung u
       ');
+      -- Tạo bảng đăng ký kênh nếu chưa có
+      IF OBJECT_ID('dbo.dang_ky_kenh', 'U') IS NULL
+      BEGIN
+        CREATE TABLE dbo.dang_ky_kenh (
+          dang_ky_id INT IDENTITY(1,1) PRIMARY KEY,
+          nguoi_dung_id INT NOT NULL, -- Người nhấn đăng ký
+          kenh_id INT NOT NULL,        -- Chủ kênh được đăng ký
+          ngay_dang_ky DATETIME DEFAULT GETUTCDATE(),
+          CONSTRAINT FK_NguoiDung FOREIGN KEY (nguoi_dung_id) REFERENCES dbo.nguoi_dung(nguoi_dung_id),
+          CONSTRAINT FK_Kenh FOREIGN KEY (kenh_id) REFERENCES dbo.nguoi_dung(nguoi_dung_id),
+          CONSTRAINT UQ_DangKy UNIQUE (nguoi_dung_id, kenh_id)
+        );
+      END
     `);
-    console.log("[db] Checked/Added missing columns: do_tuoi, danh_cho_tre_em");
+    console.log("[db] Checked/Added missing columns and tables: do_tuoi, danh_cho_tre_em, dang_ky_kenh");
   } catch (err) {
-    console.error("[db] Error ensuring columns exist:", err.message);
+    console.error("[db] Error ensuring database structure:", err.message);
   }
 }
 ensureColumnsExist();
@@ -505,6 +518,57 @@ app.post("/api/auth/update-age", async (req, res) => {
   }
 });
 
+app.post("/api/subscribe", async (req, res) => {
+  try {
+    const subscriberId = Number(req.body.subscriberId);
+    const channelId = Number(req.body.channelId);
+
+    if (!subscriberId || !channelId || subscriberId === channelId) {
+      return res.status(400).json({ ok: false, error: "Dữ liệu không hợp lệ." });
+    }
+
+    const pool = await sql.connect(sqlConfig);
+    const check = await pool.request()
+      .input("Sid", sql.Int, subscriberId)
+      .input("Cid", sql.Int, channelId)
+      .query("SELECT 1 FROM dbo.dang_ky_kenh WHERE nguoi_dung_id = @Sid AND kenh_id = @Cid");
+
+    if (check.recordset.length > 0) {
+      await pool.request()
+        .input("Sid", sql.Int, subscriberId)
+        .input("Cid", sql.Int, channelId)
+        .query("DELETE FROM dbo.dang_ky_kenh WHERE nguoi_dung_id = @Sid AND kenh_id = @Cid");
+      return res.json({ ok: true, subscribed: false });
+    } else {
+      await pool.request()
+        .input("Sid", sql.Int, subscriberId)
+        .input("Cid", sql.Int, channelId)
+        .query("INSERT INTO dbo.dang_ky_kenh (nguoi_dung_id, kenh_id) VALUES (@Sid, @Cid)");
+      return res.json({ ok: true, subscribed: true });
+    }
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.get("/api/subscribe/status", async (req, res) => {
+  try {
+    const subscriberId = Number(req.query.subscriberId);
+    const channelId = Number(req.query.channelId);
+    if (!subscriberId || !channelId) return res.json({ ok: true, subscribed: false });
+
+    const pool = await sql.connect(sqlConfig);
+    const check = await pool.request()
+      .input("Sid", sql.Int, subscriberId)
+      .input("Cid", sql.Int, channelId)
+      .query("SELECT 1 FROM dbo.dang_ky_kenh WHERE nguoi_dung_id = @Sid AND kenh_id = @Cid");
+    
+    res.json({ ok: true, subscribed: check.recordset.length > 0 });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 app.get("/api/categories", async (_req, res) => {
   try {
     const pool = await sql.connect(sqlConfig);
@@ -597,10 +661,11 @@ app.get("/api/videos", async (req, res) => {
         (SELECT COUNT(*) FROM dbo.binh_luan bl WHERE bl.video_id = v.video_id) AS SoBinhLuan,
         u.ten_dang_nhap AS TenDangNhap,
         u.anh_dai_dien AS Avatar,
-        u.nguoi_dung_id AS NguoiDungId,
-        v.danh_cho_tre_em AS ForKids
+        v.danh_cho_tre_em AS ForKids,
+        CASE WHEN dk.dang_ky_id IS NOT NULL THEN 1 ELSE 0 END AS IsSubscribed
       FROM dbo.video v
       LEFT JOIN dbo.nguoi_dung u ON v.nguoi_dung_id = u.nguoi_dung_id
+      LEFT JOIN dbo.dang_ky_kenh dk ON v.nguoi_dung_id = dk.kenh_id AND dk.nguoi_dung_id = @ViewerId
       WHERE v.trang_thai = N'da_duyet'
     `;
     
@@ -621,9 +686,11 @@ app.get("/api/videos", async (req, res) => {
           WHEN LOWER(v.tieu_de) = LOWER(@SearchExact) OR LOWER(u.ten_dang_nhap) = LOWER(@SearchExact) THEN 0
           WHEN LOWER(v.tieu_de) LIKE LOWER(@SearchPrefix) OR LOWER(u.ten_dang_nhap) LIKE LOWER(@SearchPrefix) THEN 1
           ELSE 2
-        END, v.video_id DESC`;
+        END, 
+        CASE WHEN dk.dang_ky_id IS NOT NULL THEN 0 ELSE 1 END ASC,
+        v.video_id DESC`;
     } else {
-      q += " ORDER BY v.video_id DESC";
+      q += " ORDER BY CASE WHEN dk.dang_ky_id IS NOT NULL THEN 0 ELSE 1 END ASC, v.video_id DESC";
     }
     
     // Đọc ra từ View (Nằm trong thư mục Views của SSMS)

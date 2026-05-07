@@ -65,6 +65,9 @@
                 <h2 id="userNameDisplay">Đang tải...</h2>
                 <p id="userVideoCount">Số video đã đăng: 0</p>
             </div>
+            <div style="margin-left: auto;">
+                <button id="subscribeBtn" style="display: none; padding: 10px 24px; border: none; border-radius: 24px; font-weight: bold; cursor: pointer; transition: 0.3s; font-size: 15px;"></button>
+            </div>
         </div>
 
         <h2 class="userVideoTitle">Tất cả video đã tải lên</h2>
@@ -128,6 +131,51 @@
                 } else {
                     throw new Error(data.error || "Không thể tải dữ liệu");
                 }
+
+                // Xử lý nút đăng ký
+                const subscribeBtn = document.getElementById("subscribeBtn");
+                let isSubscribed = false;
+
+                async function updateSubscribeUI() {
+                    if (!currentUser || currentUser.nguoi_dung_id == userId) {
+                        subscribeBtn.style.display = "none";
+                        return;
+                    }
+                    subscribeBtn.style.display = "block";
+                    
+                    try {
+                        const res = await apiFetch(`/api/subscribe/status?subscriberId=${currentUser.nguoi_dung_id}&channelId=${userId}`);
+                        const data = await parseJsonResponse(res);
+                        isSubscribed = data.subscribed;
+
+                        if (isSubscribed) {
+                            subscribeBtn.textContent = "Đã đăng ký";
+                            subscribeBtn.style.background = "#e0e0e0";
+                            subscribeBtn.style.color = "#606060";
+                        } else {
+                            subscribeBtn.textContent = "Đăng ký";
+                            subscribeBtn.style.background = "#cc0000";
+                            subscribeBtn.style.color = "white";
+                        }
+                    } catch (e) { console.error("Lỗi check sub:", e); }
+                }
+
+                subscribeBtn.onclick = async () => {
+                    try {
+                        const res = await apiFetch("/api/subscribe", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ subscriberId: currentUser.nguoi_dung_id, channelId: userId })
+                        });
+                        const data = await parseJsonResponse(res);
+                        if (data.ok) {
+                            updateSubscribeUI();
+                        }
+                    } catch (e) { alert("Lỗi khi đăng ký: " + e.message); }
+                };
+
+                updateSubscribeUI();
+
             } catch (e) {
                 console.error("Lỗi trang Profile:", e);
                 const nameDisplay = document.getElementById("userNameDisplay");

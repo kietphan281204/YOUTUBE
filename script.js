@@ -1,9 +1,8 @@
-document.getElementById("homeBtn").onclick = function () {
-    window.location.href = "index.html";
-};
-document.getElementById("loginPageBtn").onclick = function () {
-    window.location.href = "login.html";
-};
+const homeBtn = document.getElementById("homeBtn");
+if (homeBtn) homeBtn.onclick = () => window.location.href = "index.html";
+
+const loginPageBtn = document.getElementById("loginPageBtn");
+if (loginPageBtn) loginPageBtn.onclick = () => window.location.href = "login.html";
 
 // Backend base URL (for GitHub Pages or separate hosting).
 // Configure in config.js as: window.API_BASE = "https://your-backend.com"
@@ -110,6 +109,9 @@ function pickVideoDescription(v) {
 }
 
 function renderVideoCard(v) {
+    if (!currentUser && typeof loadCurrentUser === "function") {
+        currentUser = loadCurrentUser();
+    }
     const card = document.createElement("div");
     card.className = "videoCard";
     card.style.cursor = "pointer";

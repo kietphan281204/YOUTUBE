@@ -648,6 +648,7 @@ app.get("/api/videos", async (req, res) => {
 
     const request = pool.request();
     request.input("ViewerAge", sql.Int, viewerAge);
+    request.input("ViewerId", sql.Int, viewerId || 0);
 
     let q = `
       SELECT TOP (100) 
@@ -754,6 +755,7 @@ async function fetchTrendingVideos(req) {
     const result = await pool
       .request()
       .input("ViewerAge", sql.Int, viewerAge)
+      .input("ViewerId", sql.Int, viewerId || 0)
       .query(
         "SELECT TOP (50) " +
           "v.video_id AS Id, v.tieu_de AS Title, v.mo_ta AS Description, v.duong_dan_video AS RelativeUrl, " +
@@ -764,7 +766,8 @@ async function fetchTrendingVideos(req) {
           "FROM dbo.video_xu_huong v " +
           "LEFT JOIN dbo.video vid ON v.video_id = vid.video_id " +
           "LEFT JOIN dbo.nguoi_dung u ON vid.nguoi_dung_id = u.nguoi_dung_id " +
-          "ORDER BY v.diem_xu_huong DESC"
+          "LEFT JOIN dbo.dang_ky_kenh dk ON vid.nguoi_dung_id = dk.kenh_id AND dk.nguoi_dung_id = @ViewerId " +
+          "ORDER BY CASE WHEN dk.dang_ky_id IS NOT NULL THEN 0 ELSE 1 END ASC, v.diem_xu_huong DESC"
       );
   const rows = (result.recordset || []).map((r) => {
     const base = videoFromRow(r);

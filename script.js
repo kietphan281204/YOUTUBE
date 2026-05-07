@@ -122,7 +122,46 @@ function renderVideoCard(v) {
     video.src = apiUrl(v.RelativeUrl);
     video.controls = true;
     video.addEventListener("click", (e) => e.stopPropagation());
-    card.appendChild(video);
+    
+    // Kiểm tra giới hạn độ tuổi
+    const userAge = parseInt(currentUser?.do_tuoi) || 0;
+    const isRestricted = (v.ForKids === 0 || v.ForKids === false);
+    const shouldWarn = isRestricted && userAge < 18;
+
+    if (shouldWarn) {
+        const thumbWrap = document.createElement("div");
+        thumbWrap.style.position = "relative";
+        thumbWrap.style.width = "100%";
+        thumbWrap.style.aspectRatio = "16/9";
+        thumbWrap.style.background = "#000";
+        thumbWrap.style.borderRadius = "12px";
+        thumbWrap.style.overflow = "hidden";
+        
+        video.style.filter = "blur(20px) grayscale(100%)";
+        video.controls = false; // Chặn xem trước
+        
+        const overlay = document.createElement("div");
+        overlay.innerHTML = `
+            <div style="background: rgba(176, 0, 32, 0.9); color: white; padding: 10px; border-radius: 8px; font-size: 13px; font-weight: bold; text-align: center;">
+                🔞 Video dành cho người trên 18 tuổi
+            </div>
+        `;
+        overlay.style.position = "absolute";
+        overlay.style.top = "0";
+        overlay.style.left = "0";
+        overlay.style.width = "100%";
+        overlay.style.height = "100%";
+        overlay.style.display = "flex";
+        overlay.style.alignItems = "center";
+        overlay.style.justifyContent = "center";
+        overlay.style.zIndex = "5";
+        
+        thumbWrap.appendChild(video);
+        thumbWrap.appendChild(overlay);
+        card.appendChild(thumbWrap);
+    } else {
+        card.appendChild(video);
+    }
 
     // Info container (Avatar + Text)
     const infoContainer = document.createElement("div");

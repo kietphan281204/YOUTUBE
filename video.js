@@ -193,7 +193,24 @@ window.addEventListener("DOMContentLoaded", async () => {
             }`
         );
         const dataV = await parseJsonResponse(resV);
-        if (!resV.ok || !dataV.ok) throw new Error(dataV.error || "Không tải được video.");
+        if (!resV.ok || !dataV.ok) {
+            if (resV.status === 403) {
+                const container = document.querySelector("main");
+                if (container) {
+                    container.innerHTML = `
+                        <div style="background: white; padding: 40px; border-radius: 15px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.1); max-width: 600px; margin: 60px auto; border: 2px solid #f8d7da;">
+                            <div style="font-size: 80px; margin-bottom: 20px;">🔞</div>
+                            <h2 style="color: #d32f2f; margin-bottom: 15px; font-size: 28px;">Giới hạn độ tuổi</h2>
+                            <p style="font-size: 18px; color: #555; line-height: 1.6;">${dataV.error || "Video này chỉ dành cho người xem trên 18 tuổi."}</p>
+                            <p style="margin-top: 10px; font-size: 14px; color: #888;">Vui lòng quay lại trang chủ để xem các nội dung phù hợp khác.</p>
+                            <button onclick="window.location.href='index.html'" style="margin-top: 30px; padding: 12px 35px; background: #d32f2f; color: white; border: none; border-radius: 30px; font-weight: bold; cursor: pointer; font-size: 16px; transition: 0.3s; box-shadow: 0 4px 10px rgba(211, 47, 47, 0.3);">Quay lại trang chủ</button>
+                        </div>
+                    `;
+                }
+                return;
+            }
+            throw new Error(dataV.error || "Không tải được video.");
+        }
         const v = dataV.video;
         document.getElementById("detailTitle").textContent = v.Title || "Video";
         const descEl = document.getElementById("detailDescription");

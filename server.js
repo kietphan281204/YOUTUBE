@@ -597,12 +597,11 @@ app.get("/api/videos", async (req, res) => {
         (SELECT COUNT(*) FROM dbo.binh_luan bl WHERE bl.video_id = v.video_id) AS SoBinhLuan,
         u.ten_dang_nhap AS TenDangNhap,
         u.anh_dai_dien AS Avatar,
-        u.nguoi_dung_id AS NguoiDungId
+        u.nguoi_dung_id AS NguoiDungId,
+        v.danh_cho_tre_em AS ForKids
       FROM dbo.video v
       LEFT JOIN dbo.nguoi_dung u ON v.nguoi_dung_id = u.nguoi_dung_id
       WHERE v.trang_thai = N'da_duyet'
-      -- Lọc theo độ tuổi: nếu video không dành cho trẻ em (0) thì viewer phải >= 18
-      AND (v.danh_cho_tre_em = 1 OR @ViewerAge >= 18)
     `;
     
     if (Number.isFinite(catId) && catId > 0) {
@@ -693,11 +692,11 @@ async function fetchTrendingVideos(req) {
           "v.video_id AS Id, v.tieu_de AS Title, v.mo_ta AS Description, v.duong_dan_video AS RelativeUrl, " +
           "v.ngay_tao AS UploadedAt, v.luot_xem AS LuotXem, " +
           "v.so_like AS SoLike, v.so_binh_luan AS SoBinhLuan, v.diem_xu_huong AS DiemXuHuong, " +
-          "u.ten_dang_nhap AS TenDangNhap, u.anh_dai_dien AS Avatar, u.nguoi_dung_id AS NguoiDungId " +
+          "u.ten_dang_nhap AS TenDangNhap, u.anh_dai_dien AS Avatar, u.nguoi_dung_id AS NguoiDungId, " +
+          "vid.danh_cho_tre_em AS ForKids " +
           "FROM dbo.video_xu_huong v " +
           "LEFT JOIN dbo.video vid ON v.video_id = vid.video_id " +
           "LEFT JOIN dbo.nguoi_dung u ON vid.nguoi_dung_id = u.nguoi_dung_id " +
-          "WHERE (vid.danh_cho_tre_em = 1 OR @ViewerAge >= 18) " +
           "ORDER BY v.diem_xu_huong DESC"
       );
   const rows = (result.recordset || []).map((r) => {

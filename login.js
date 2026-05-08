@@ -31,8 +31,11 @@ function showLoggedState(user) {
         if (section) section.style.display = "none";
         if (logged) {
             logged.style.display = "block";
-            document.getElementById("displayUser").textContent = user.ten_dang_nhap || "Người dùng";
-            document.getElementById("displayEmail").textContent = user.email || "";
+            const uInput = document.getElementById("updateUsernameInput");
+            const eInput = document.getElementById("updateEmailInput");
+            if (uInput) uInput.value = user.ten_dang_nhap || "";
+            if (eInput) eInput.value = user.email || "";
+
             // Hiển thị tuổi
             const ageDisplay = document.getElementById("displayAge");
             if (ageDisplay) ageDisplay.textContent = user.do_tuoi || "Chưa cập nhật";
@@ -214,5 +217,57 @@ async function updateAge() {
     } catch (e) {
         statusEl.textContent = "Lỗi: " + e.message;
         statusEl.style.color = "#ff4757";
+    }
+}
+
+async function updateProfile() {
+    const username = document.getElementById("updateUsernameInput")?.value.trim();
+    const email = document.getElementById("updateEmailInput")?.value.trim();
+
+    if (!username || !email) {
+        alert("Vui lòng nhập đầy đủ Tên đăng nhập và Email.");
+        return;
+    }
+
+    const saved = localStorage.getItem("current_user") || localStorage.getItem("currentUser");
+    if (!saved) return;
+    const user = JSON.parse(saved);
+    const userId = user.nguoi_dung_id || user.id;
+
+    const statusEl = document.getElementById("profileUpdateStatus");
+    if (statusEl) {
+        statusEl.textContent = "Đang lưu...";
+        statusEl.style.color = "#666";
+    }
+
+    try {
+        const res = await fetch(apiUrl("/api/auth/update-profile"), {
+            method: "POST",
+            headers: { 
+                "Content-Type": "application/json",
+                "ngrok-skip-browser-warning": "1" 
+            },
+            body: JSON.stringify({ 
+                nguoi_dung_id: userId, 
+                ten_dang_nhap: username, 
+                email: email 
+            })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) throw new Error(data.error || "Lỗi cập nhật thông tin.");
+
+        localStorage.setItem("current_user", JSON.stringify(data.user));
+        if (typeof showLoggedState === "function") showLoggedState(data.user);
+        
+        if (statusEl) {
+            statusEl.textContent = "Cập nhật thành công!";
+            statusEl.style.color = "#2ed573";
+            setTimeout(() => statusEl.textContent = "", 3000);
+        }
+    } catch (e) {
+        if (statusEl) {
+            statusEl.textContent = "Lỗi: " + e.message;
+            statusEl.style.color = "#ff4757";
+        }
     }
 }

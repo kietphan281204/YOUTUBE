@@ -201,8 +201,18 @@
             <input type="file" id="updateAvatarFile" accept="image/*" style="display: none;">
         </div>
         <div id="avatarUpdateStatus" style="font-size: 13px; margin-top: 5px; margin-bottom: 5px;"></div>
-        <h2 id="displayUser">Tên người dùng</h2>
-        <p id="displayEmail" style="color: #666; margin-bottom: 10px;"></p>
+        <div style="margin: 20px 0;">
+            <div style="margin-bottom: 10px; text-align: left; width: 85%; margin-left: auto; margin-right: auto;">
+                <label style="font-size: 12px; color: #666; font-weight: bold;">Tên đăng nhập:</label>
+                <input type="text" id="updateUsernameInput" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #eee; margin-top: 5px;">
+            </div>
+            <div style="margin-bottom: 15px; text-align: left; width: 85%; margin-left: auto; margin-right: auto;">
+                <label style="font-size: 12px; color: #666; font-weight: bold;">Email:</label>
+                <input type="email" id="updateEmailInput" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #eee; margin-top: 5px;">
+            </div>
+            <button onclick="updateProfile()" style="padding: 10px 25px; background: #764ba2; color: white; border: none; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 600; box-shadow: 0 4px 10px rgba(118, 75, 162, 0.2);">Lưu thông tin</button>
+            <div id="profileUpdateStatus" style="font-size: 12px; margin-top: 8px;"></div>
+        </div>
         
         <div style="background: rgba(118, 75, 162, 0.05); padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px dashed #764ba2;">
             <p style="font-size: 14px; margin-bottom: 8px; color: #555;">Tuổi của bạn: <b id="displayAge">--</b></p>

@@ -518,6 +518,41 @@ app.post("/api/auth/update-age", async (req, res) => {
   }
 });
 
+app.post("/api/auth/update-profile", async (req, res) => {
+  try {
+    const userId = Number(req.body.nguoi_dung_id);
+    const username = String(req.body.ten_dang_nhap || "").trim();
+    const email = String(req.body.email || "").trim();
+
+    if (!userId || !username || !email) {
+      return res.status(400).json({ ok: false, error: "Dữ liệu không đầy đủ." });
+    }
+
+    const pool = await sql.connect(sqlConfig);
+    const result = await pool.request()
+      .input("Uid", sql.Int, userId)
+      .input("User", sql.NVarChar(255), username)
+      .input("Email", sql.NVarChar(255), email)
+      .query(`
+        UPDATE dbo.nguoi_dung 
+        SET ten_dang_nhap = @User, email = @Email, ngay_cap_nhat = GETUTCDATE()
+        OUTPUT INSERTED.nguoi_dung_id, INSERTED.ten_dang_nhap, INSERTED.email, INSERTED.anh_dai_dien, INSERTED.do_tuoi
+        WHERE nguoi_dung_id = @Uid
+      `);
+
+    if (result.rowsAffected[0] === 0) {
+      return res.status(404).json({ ok: false, error: "Không tìm thấy người dùng." });
+    }
+
+    return res.json({ ok: true, user: mapNguoiDungRow(result.recordset[0]) });
+  } catch (err) {
+    if (err?.number === 2627 || err?.number === 2601) {
+      return res.status(409).json({ ok: false, error: "Tên đăng nhập hoặc email đã tồn tại." });
+    }
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 app.post("/api/subscribe", async (req, res) => {
   try {
     const subscriberId = Number(req.body.subscriberId);

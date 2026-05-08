@@ -295,29 +295,9 @@
 
             <div class="upload-preview-container">
                 <div class="upload-preview">
-                    <div class="preview-header">
-                        <span>Đang theo dõi</span>
-                        <span style="border-bottom: 2px solid #fff;">Dành cho bạn</span>
-                    </div>
                     <div class="preview-video-box">
                         <div id="videoPreviewPlaceholder">Xem trước video</div>
                         <video id="videoPreviewEl" style="width: 100%; height: 100%; object-fit: cover; display: none;" autoplay muted loop></video>
-                    </div>
-                    <div class="preview-info">
-                        <div style="font-weight: bold; margin-bottom: 5px;" id="previewUsername">@Username</div>
-                        <div style="font-size: 13px; max-width: 200px;" id="previewDesc">Mô tả video sẽ hiện ở đây...</div>
-                        <div style="font-size: 12px; margin-top: 5px; display: flex; align-items: center; gap: 5px;">
-                            <span style="font-size: 14px;">♫</span> Nhạc gốc - @Username
-                        </div>
-                    </div>
-                    
-                    <!-- Các nút tương tác TikTok -->
-                    <div style="position: absolute; right: 10px; bottom: 80px; display: flex; flex-direction: column; gap: 20px; align-items: center; color: #fff; font-size: 12px;">
-                        <div style="width: 45px; height: 45px; border-radius: 50%; border: 2px solid #fff; background: #ccc;"></div>
-                        <div style="text-align: center;"><span style="font-size: 24px;">❤️</span><br>0</div>
-                        <div style="text-align: center;"><span style="font-size: 24px;">💬</span><br>0</div>
-                        <div style="text-align: center;"><span style="font-size: 24px;">🔖</span><br>0</div>
-                        <div style="text-align: center;"><span style="font-size: 24px;">↪️</span><br>0</div>
                     </div>
                 </div>
             </div>
@@ -349,17 +329,13 @@
             }
         }
 
-        // Live preview mô tả
+        // Live preview mô tả (đã xóa các element text đè lên video)
         document.getElementById('descriptionInput').addEventListener('input', (e) => {
-            document.getElementById('previewDesc').textContent = e.target.value || "Mô tả video sẽ hiện ở đây...";
+            // Có thể thêm logic xử lý khác ở đây nếu cần
         });
 
-        // Hiển thị username trong preview
         window.addEventListener('DOMContentLoaded', () => {
-            const user = loadCurrentUser();
-            if (user && user.ten_dang_nhap) {
-                document.getElementById('previewUsername').textContent = '@' + user.ten_dang_nhap;
-            }
+            // Khởi tạo các giá trị cần thiết
         });
     </script>
 </body>

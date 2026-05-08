@@ -134,6 +134,28 @@ async function loadRecommendations(creatorId, currentVideoId) {
     }
 }
 
+function downloadVideo() {
+    const video = document.getElementById("detailVideo");
+    if (!video || !video.src) {
+        alert("Không tìm thấy tệp video để tải.");
+        return;
+    }
+
+    // Cách tải trực tiếp và nhanh hơn (không đợi fetch hết file)
+    const a = document.createElement("a");
+    a.href = video.src;
+    
+    // Lấy tên file từ tiêu đề video
+    const title = document.getElementById("detailTitle")?.textContent || "video";
+    const fileName = `${title.replace(/[/\\?%*:|"<>]/g, '-')}.mp4`;
+    
+    a.setAttribute("download", fileName);
+    a.setAttribute("target", "_blank");
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+}
+
 async function loadLikeState(videoId, user) {
     const likeBtn = document.getElementById("likeBtn");
     const likeCount = document.getElementById("likeCount");
@@ -147,11 +169,9 @@ async function loadLikeState(videoId, user) {
         if (likeCount) likeCount.textContent = data.count || 0;
         if (likeBtn) {
             if (data.liked) {
-                likeBtn.style.background = "rgba(0,0,0,0.1)";
-                document.getElementById("likeIcon").textContent = "❤️";
+                likeBtn.classList.add("liked");
             } else {
-                likeBtn.style.background = "rgba(0,0,0,0.05)";
-                document.getElementById("likeIcon").textContent = "👍";
+                likeBtn.classList.remove("liked");
             }
         }
     } catch (e) { console.error(e); }

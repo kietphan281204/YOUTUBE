@@ -114,16 +114,20 @@ async function loadRecommendations(creatorId, currentVideoId) {
                 card.onclick = () => window.location.href = `video.html?id=${vId}`;
 
                 const videoUrl = apiUrl(v.RelativeUrl);
+                const avatar = v.Avatar ? apiUrl(v.Avatar) : "https://cdn-icons-png.flaticon.com/512/149/149071.png";
                 const views = v.LuotXem || 0;
 
                 card.innerHTML = `
                     <div class="rec-thumb-wrapper">
                         <video src="${videoUrl}#t=0.1" class="rec-thumb" muted playsinline preload="metadata" onmouseover="this.play()" onmouseout="this.pause(); this.currentTime=0.1;"></video>
                     </div>
-                    <div class="rec-info">
-                        <div class="rec-title">${escapeHtml(v.Title || "Video")}</div>
-                        <div class="rec-meta">${escapeHtml(v.TenDangNhap || "")}</div>
-                        <div class="rec-meta">${views} lượt xem</div>
+                    <div class="rec-info" style="display: flex; gap: 10px; padding: 8px;">
+                        <img src="${avatar}" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover; flex-shrink: 0;">
+                        <div>
+                            <div class="rec-title">${escapeHtml(v.Title || "Video")}</div>
+                            <div class="rec-meta">${escapeHtml(v.TenDangNhap || "")}</div>
+                            <div class="rec-meta">${views} lượt xem</div>
+                        </div>
                     </div>
                 `;
                 list.appendChild(card);

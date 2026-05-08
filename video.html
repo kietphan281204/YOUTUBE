@@ -5,43 +5,299 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Chi tiết video</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        :root {
+            --bg-page: #f9f9f9;
+            --text-main: #0f0f0f;
+            --text-secondary: #606060;
+        }
+
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+        }
+
+        .video-page-container {
+            display: flex;
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 20px;
+            gap: 24px;
+        }
+
+        .video-left-column {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .video-right-column {
+            width: 350px;
+            flex-shrink: 0;
+        }
+
+        @media (max-width: 1000px) {
+            .video-page-container {
+                flex-direction: column;
+            }
+            .video-right-column {
+                width: 100%;
+            }
+        }
+
+        #detailVideo {
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            background: #000;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        #detailTitle {
+            font-size: 20px;
+            font-weight: 700;
+            margin: 15px 0 10px;
+            line-height: 1.4;
+        }
+
+        .video-info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .video-meta-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .channel-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+            background: #ccc;
+        }
+
+        .channel-name {
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .video-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .action-btn {
+            background: rgba(0,0,0,0.05);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: background 0.2s;
+        }
+
+        .action-btn:hover {
+            background: rgba(0,0,0,0.1);
+        }
+
+        #descriptionBox {
+            background: rgba(0,0,0,0.05);
+            padding: 12px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            font-size: 14px;
+            white-space: pre-wrap;
+        }
+
+        /* Recommendations */
+        .rec-card {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 12px;
+            cursor: pointer;
+        }
+
+        .rec-thumb-wrapper {
+            width: 160px;
+            aspect-ratio: 16/9;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .rec-thumb {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 8px;
+            background: #ddd;
+        }
+
+        .rec-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .rec-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            line-height: 1.4;
+        }
+
+        .rec-meta {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .recommendations-header {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        /* Comments Styling */
+        .comments-header {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 20px;
+        }
+
+        .comment-item {
+            margin-bottom: 16px;
+            display: flex;
+            gap: 12px;
+        }
+
+        .comment-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: #ccc;
+        }
+
+        .comment-content {
+            flex: 1;
+        }
+
+        .comment-author {
+            font-weight: 600;
+            font-size: 13px;
+            margin-bottom: 2px;
+        }
+
+        .comment-text {
+            font-size: 14px;
+            line-height: 1.4;
+        }
+    </style>
 </head>
 <body>
     <header>
-        <h1>Website Video</h1>
+        <h1 style="cursor:pointer;" onclick="window.location.href='index.html'">Website Video</h1>
         <div class="headerActions">
             <button type="button" id="backBtn">← Trang chủ</button>
             <button type="button" id="loginPageBtn">Đăng nhập</button>
         </div>
     </header>
 
-    <main class="videoDetailMain">
-        <div id="detailStatus"></div>
+    <main class="video-page-container">
+        <div class="video-left-column">
+            <div id="detailStatus"></div>
 
-        <article id="videoDetail">
-            <h2 id="detailTitle">Đang tải…</h2>
-            <p id="detailDescription" class="videoDescription"></p>
             <video id="detailVideo" controls playsinline></video>
-            <p id="detailMeta" class="videoMeta"></p>
-            <div class="likeRow">
-                <button type="button" id="likeBtn" class="likeBtn">👍 Thích</button>
-                <span id="likeCount" class="likeCount">0 lượt thích</span>
-                <span id="viewCount" class="viewCount">0 lượt xem</span>
-            </div>
-        </article>
+            
+            <h1 id="detailTitle">Đang tải video…</h1>
+            
+            <div class="video-info-row">
+                <div class="video-meta-info" id="channelInfo" style="cursor:pointer;">
+                    <img id="creatorAvatar" src="" alt="Avatar" class="channel-avatar">
+                    <div>
+                        <div id="creatorName" class="channel-name">...</div>
+                        <div id="subCount" style="font-size: 12px; color: #606060;">0 người đăng ký</div>
+                    </div>
+                    <div id="subBtnPlaceholder"></div>
+                </div>
 
-        <section class="commentsSection">
-            <h3>Bình luận</h3>
-            <div id="commentList" class="commentList"></div>
-            <div id="commentFormWrap" class="commentFormWrap">
-                <textarea id="commentInput" rows="3" placeholder="Viết bình luận…" maxlength="1000"></textarea>
-                <button type="button" id="sendCommentBtn">Gửi bình luận</button>
+                <div class="video-actions">
+                    <button type="button" id="likeBtn" class="action-btn">
+                        <span id="likeIcon">👍</span> <span id="likeCount">0</span>
+                    </button>
+                    <button type="button" class="action-btn" onclick="shareVideo()">
+                        <span>↪️</span> Chia sẻ
+                    </button>
+                </div>
             </div>
-            <p id="commentHint" class="commentHint"></p>
-        </section>
+
+            <div id="descriptionBox">
+                <div style="font-weight: 600; margin-bottom: 5px;">
+                    <span id="viewCount">0</span> lượt xem • <span id="publishDate">...</span>
+                </div>
+                <div id="detailDescription"></div>
+            </div>
+
+            <section class="commentsSection">
+                <h3 class="comments-header">Bình luận</h3>
+                <div id="commentFormWrap" style="margin-bottom: 24px; display: flex; gap: 12px;">
+                    <img id="currentUserAvatar" src="https://cdn-icons-png.flaticon.com/512/149/149071.png" class="channel-avatar" style="width: 32px; height: 32px;">
+                    <div style="flex: 1;">
+                        <textarea id="commentInput" placeholder="Viết bình luận…" style="width: 100%; border: none; border-bottom: 1px solid #ccc; padding: 5px 0; outline: none; background: transparent;" onfocus="this.style.borderBottom='2px solid #000'"></textarea>
+                        <div id="commentActions" style="display: none; justify-content: flex-end; gap: 10px; margin-top: 10px;">
+                            <button type="button" onclick="cancelComment()" style="background: none; border: none; font-weight: 600; cursor: pointer;">Hủy</button>
+                            <button type="button" id="sendCommentBtn" style="background: #065fd4; color: white; border: none; padding: 8px 16px; border-radius: 18px; font-weight: 600; cursor: pointer;">Bình luận</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="commentList" class="commentList"></div>
+                <p id="commentHint" class="commentHint"></p>
+            </section>
+        </div>
+
+        <div class="video-right-column">
+            <div class="recommendations-header" id="recHeader">Video cùng kênh</div>
+            <div id="recommendationsList">
+                <p style="color: #666; font-size: 14px;">Đang tải đề xuất...</p>
+            </div>
+        </div>
     </main>
 
     <script src="config.js"></script>
     <script src="video.js"></script>
+    <script>
+        // Toggle comment buttons
+        document.getElementById('commentInput').addEventListener('focus', () => {
+            document.getElementById('commentActions').style.display = 'flex';
+        });
+
+        function cancelComment() {
+            document.getElementById('commentInput').value = '';
+            document.getElementById('commentActions').style.display = 'none';
+        }
+
+        function shareVideo() {
+            if (navigator.share) {
+                navigator.share({
+                    title: document.getElementById('detailTitle').textContent,
+                    url: window.location.href
+                });
+            } else {
+                alert("Đã sao chép liên kết vào bộ nhớ tạm!");
+                navigator.clipboard.writeText(window.location.href);
+            }
+        }
+    </script>
 </body>
 </html>

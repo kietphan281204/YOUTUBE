@@ -39,64 +39,13 @@ function setCommentHint(msg, isError = false) {
     el.style.color = isError ? "#b00020" : "#555";
 }
 
-function explainApiFailure(status, text) {
-    const t = String(text || "");
-    if (status === 404 && t.includes("Cannot GET")) {
-        return (
-            "API không có route này (404). Thường do backend chưa chạy bản mới có GET /api/videos/:id. " +
-            "Làm: git pull trong thư mục project → npm.cmd run dev → ngrok http 8080 → cập nhật window.API_BASE trong config.js " +
-            "trùng URL ngrok hiện tại → push. Giữ cả Node và ngrok đang mở khi dùng GitHub Pages."
-        );
-    }
-    return `Server trả về không phải JSON (HTTP ${status}): ${t.slice(0, 200)}`;
-}
-
 async function parseJsonResponse(res) {
     const text = await res.text();
     if (!text) return { ok: false, error: `Empty response (HTTP ${res.status})` };
     try {
         return JSON.parse(text);
     } catch {
-        return {
-            ok: false,
-            error: explainApiFailure(res.status, text),
-        };
-    }
-}
-
-function renderComments(comments) {
-    const list = document.getElementById("commentList");
-    if (!list) return;
-    list.innerHTML = "";
-    if (!comments?.length) {
-        list.innerHTML = "<p class=\"commentEmpty\">Chưa có bình luận.</p>";
-        return;
-    }
-    for (const c of comments) {
-        const row = document.createElement("div");
-        row.className = "commentItem";
-        const who = c.TenDangNhap || `User #${c.NguoiDungId ?? ""}`;
-        
-        // Format date strictly for Vietnam (24h format)
-        let when = "";
-        if (c.NgayTao) {
-            const date = new Date(c.NgayTao);
-            when = date.toLocaleString("vi-VN", {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: false
-            });
-        }
-
-        row.innerHTML =
-            `<div class="commentHead"><strong>${escapeHtml(who)}</strong>` +
-            `<span class="commentTime">${escapeHtml(when)}</span></div>` +
-            `<div class="commentBody">${escapeHtml(c.NoiDung || "")}</div>`;
-        list.appendChild(row);
+        return { ok: false, error: `Lỗi server (HTTP ${res.status})` };
     }
 }
 
@@ -107,272 +56,226 @@ function escapeHtml(s) {
 }
 
 function pickVideoDescription(v) {
-    if (!v || typeof v !== "object") return "";
-    // API đã chuẩn hoá `Description`; giữ fallback cho bản cũ.
     const raw = v.Description ?? v.description ?? v.mo_ta ?? v.MO_TA;
-    if (raw == null || raw === "") return "";
-    return String(raw).trim();
+    return raw ? String(raw).trim() : "";
+}
+
+function renderComments(comments) {
+    const list = document.getElementById("commentList");
+    if (!list) return;
+    list.innerHTML = "";
+    if (!comments?.length) {
+        list.innerHTML = "<p style='color: #666; font-size: 14px;'>Chưa có bình luận nào.</p>";
+        return;
+    }
+    for (const c of comments) {
+        const row = document.createElement("div");
+        row.className = "comment-item";
+        const who = c.TenDangNhap || "Người dùng";
+        const avatar = c.AnhDaiDien ? apiUrl(c.AnhDaiDien) : "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+        
+        let when = "";
+        if (c.NgayTao) {
+            const date = new Date(c.NgayTao);
+            when = date.toLocaleDateString("vi-VN");
+        }
+
+        row.innerHTML = `
+            <img src="${avatar}" class="comment-avatar">
+            <div class="comment-content">
+                <div class="comment-author">${escapeHtml(who)} <span style="font-weight: normal; color: #606060; font-size: 12px; margin-left: 8px;">${when}</span></div>
+                <div class="comment-text">${escapeHtml(c.NoiDung || "")}</div>
+            </div>
+        `;
+        list.appendChild(row);
+    }
+}
+
+async function loadRecommendations(creatorId, currentVideoId) {
+    const list = document.getElementById("recommendationsList");
+    if (!list) return;
+
+    try {
+        const res = await apiFetch(`/api/videos?userId=${creatorId}`);
+        const data = await parseJsonResponse(res);
+        if (data.ok && Array.isArray(data.videos)) {
+            const filtered = data.videos.filter(v => (v.VideoId || v.video_id) != currentVideoId);
+            list.innerHTML = "";
+            
+            if (filtered.length === 0) {
+                list.innerHTML = "<p style='font-size: 13px; color: #666;'>Không có video nào khác từ kênh này.</p>";
+                return;
+            }
+
+            filtered.forEach(v => {
+                const card = document.createElement("div");
+                card.className = "rec-card";
+                const vId = v.VideoId || v.video_id;
+                card.onclick = () => window.location.href = `video.html?id=${vId}`;
+
+                const thumb = v.ThumbnailUrl ? apiUrl(v.ThumbnailUrl) : "https://via.placeholder.com/160x90?text=No+Thumb";
+                const views = v.LuotXem || 0;
+
+                card.innerHTML = `
+                    <div class="rec-thumb-wrapper">
+                        <img src="${thumb}" class="rec-thumb">
+                    </div>
+                    <div class="rec-info">
+                        <div class="rec-title">${escapeHtml(v.Title || "Video")}</div>
+                        <div class="rec-meta">${escapeHtml(v.TenDangNhap || "")}</div>
+                        <div class="rec-meta">${views} lượt xem</div>
+                    </div>
+                `;
+                list.appendChild(card);
+            });
+        }
+    } catch (e) {
+        list.innerHTML = "<p>Lỗi tải đề xuất.</p>";
+    }
 }
 
 async function loadLikeState(videoId, user) {
     const likeBtn = document.getElementById("likeBtn");
     const likeCount = document.getElementById("likeCount");
-
-    if (likeBtn && !user?.nguoi_dung_id) {
-        likeBtn.disabled = true;
-        likeBtn.textContent = "Đăng nhập để like";
-    }
-    if (likeCount) likeCount.textContent = "0 lượt thích";
-
-    if (!videoId || !user?.nguoi_dung_id) return;
+    if (!videoId) return;
 
     try {
-        const url =
-            `/api/videos/${encodeURIComponent(videoId)}/likes?nguoi_dung_id=${encodeURIComponent(
-                user.nguoi_dung_id
-            )}`;
+        const url = `/api/videos/${videoId}/likes${user ? `?nguoi_dung_id=${user.nguoi_dung_id}` : ""}`;
         const res = await apiFetch(url);
         const data = await parseJsonResponse(res);
-        if (!res.ok || !data.ok) throw new Error(data.error || "Không tải lượt thích.");
-
-        if (likeCount) {
-            const n = Number(data.count || 0);
-            likeCount.textContent = `${n} lượt thích`;
-        }
+        
+        if (likeCount) likeCount.textContent = data.count || 0;
         if (likeBtn) {
             if (data.liked) {
-                likeBtn.classList.add("liked");
-                likeBtn.textContent = "❤️ Đã thích";
+                likeBtn.style.background = "rgba(0,0,0,0.1)";
+                document.getElementById("likeIcon").textContent = "❤️";
             } else {
-                likeBtn.classList.remove("liked");
-                likeBtn.textContent = "👍 Thích";
+                likeBtn.style.background = "rgba(0,0,0,0.05)";
+                document.getElementById("likeIcon").textContent = "👍";
             }
-            likeBtn.disabled = false;
         }
-    } catch (e) {
-        setCommentHint(`Không tải lượt thích: ${e.message}`, true);
-    }
+    } catch (e) { console.error(e); }
 }
 
 window.addEventListener("DOMContentLoaded", async () => {
-    if (location.hostname.endsWith("github.io") && !API_BASE) {
-        setDetailStatus(
-            "Chưa cấu hình backend: mở config.js, đặt window.API_BASE = URL https ngrok (hoặc server API), commit và push.",
-            true
-        );
-        document.getElementById("detailTitle").textContent = "Lỗi cấu hình";
-        return;
-    }
-
     const params = new URLSearchParams(location.search);
     const id = params.get("id");
-    if (!id) {
-        setDetailStatus("Thiếu tham số id trên URL.", true);
-        return;
-    }
-
-    document.getElementById("backBtn")?.addEventListener("click", () => {
-        window.location.href = "index.html";
-    });
-    document.getElementById("loginPageBtn")?.addEventListener("click", () => {
-        window.location.href = "login.html";
-    });
+    if (!id) return;
 
     const user = loadCurrentUser();
-    const formWrap = document.getElementById("commentFormWrap");
-    if (!user?.nguoi_dung_id) {
-        if (formWrap) formWrap.style.display = "none";
-        setCommentHint("Đăng nhập để gửi bình luận.", true);
+    if (user?.anh_dai_dien) {
+        document.getElementById("currentUserAvatar").src = apiUrl(user.anh_dai_dien);
     }
+
+    document.getElementById("backBtn")?.addEventListener("click", () => window.location.href = "index.html");
+    document.getElementById("loginPageBtn")?.addEventListener("click", () => window.location.href = "login.html");
 
     try {
-        const u0 = loadCurrentUser();
-        const resV = await apiFetch(
-            `/api/videos/${encodeURIComponent(id)}${
-                u0?.nguoi_dung_id ? `?nguoi_dung_id=${encodeURIComponent(u0.nguoi_dung_id)}` : ""
-            }`
-        );
-        const dataV = await parseJsonResponse(resV);
-        if (!resV.ok || !dataV.ok) {
-            if (resV.status === 403) {
-                const container = document.querySelector("main");
-                if (container) {
-                    container.innerHTML = `
-                        <div style="background: white; padding: 40px; border-radius: 15px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.1); max-width: 600px; margin: 60px auto; border: 2px solid #f8d7da;">
-                            <div style="font-size: 80px; margin-bottom: 20px;">🔞</div>
-                            <h2 style="color: #d32f2f; margin-bottom: 15px; font-size: 28px;">Giới hạn độ tuổi</h2>
-                            <p style="font-size: 18px; color: #555; line-height: 1.6;">${dataV.error || "Video này chỉ dành cho người xem trên 18 tuổi."}</p>
-                            <p style="margin-top: 10px; font-size: 14px; color: #888;">Vui lòng quay lại trang chủ để xem các nội dung phù hợp khác.</p>
-                            <button onclick="window.location.href='index.html'" style="margin-top: 30px; padding: 12px 35px; background: #d32f2f; color: white; border: none; border-radius: 30px; font-weight: bold; cursor: pointer; font-size: 16px; transition: 0.3s; box-shadow: 0 4px 10px rgba(211, 47, 47, 0.3);">Quay lại trang chủ</button>
-                        </div>
-                    `;
-                }
+        const res = await apiFetch(`/api/videos/${id}${user ? `?nguoi_dung_id=${user.nguoi_dung_id}` : ""}`);
+        const data = await parseJsonResponse(res);
+        if (!data.ok) {
+            if (res.status === 403) {
+                document.body.innerHTML = `<div style="text-align:center; padding: 100px;"><h1>🔞 Nội dung giới hạn độ tuổi</h1><button onclick="history.back()">Quay lại</button></div>`;
                 return;
             }
-            throw new Error(dataV.error || "Không tải được video.");
+            throw new Error(data.error);
         }
-        const v = dataV.video;
+
+        const v = data.video;
+        const creatorId = v.NguoiDungId || v.nguoi_dung_id;
+
         document.getElementById("detailTitle").textContent = v.Title || "Video";
-        const descEl = document.getElementById("detailDescription");
-        if (descEl) {
-            const d = pickVideoDescription(v);
-            if (d) {
-                descEl.textContent = d;
-                descEl.style.display = "block";
-            } else {
-                descEl.style.display = "none";
-            }
+        document.getElementById("detailVideo").src = apiUrl(v.RelativeUrl);
+        document.getElementById("detailDescription").textContent = pickVideoDescription(v);
+        document.getElementById("viewCount").textContent = v.LuotXem || 0;
+        
+        if (v.UploadedAt) {
+            document.getElementById("publishDate").textContent = new Date(v.UploadedAt).toLocaleDateString("vi-VN");
         }
-        const vid = document.getElementById("detailVideo");
-        vid.src = apiUrl(v.RelativeUrl);
-        const metaEl = document.getElementById("detailMeta");
-        if (metaEl) {
-            console.log("Dữ liệu video nhận được:", v); // Kiểm tra trong F12 Console
-            
-            let dateStr = "";
-            if (v.UploadedAt) {
-                const date = new Date(v.UploadedAt);
-                dateStr = date.toLocaleString("vi-VN", {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    hour12: false
+
+        const creatorName = v.TenDangNhap || "Kênh Video";
+        document.getElementById("creatorName").textContent = creatorName;
+        document.getElementById("creatorAvatar").src = v.Avatar ? apiUrl(v.Avatar) : "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+        document.getElementById("channelInfo").onclick = () => window.location.href = `user.html?id=${creatorId}`;
+        document.getElementById("recHeader").textContent = `Video của ${creatorName}`;
+
+        // Subscribe Button
+        if (user && user.nguoi_dung_id != creatorId) {
+            const subWrap = document.getElementById("subBtnPlaceholder");
+            const subBtn = document.createElement("button");
+            subBtn.className = "action-btn";
+            subBtn.style.marginLeft = "15px";
+            subBtn.style.padding = "10px 20px";
+            subBtn.style.borderRadius = "20px";
+            subBtn.style.fontWeight = "bold";
+            subBtn.style.border = "none";
+            subBtn.style.cursor = "pointer";
+            subWrap.appendChild(subBtn);
+
+            const updateSubUI = async () => {
+                const r = await apiFetch(`/api/subscribe/status?subscriberId=${user.nguoi_dung_id}&channelId=${creatorId}`);
+                const d = await parseJsonResponse(r);
+                if (d.subscribed) {
+                    subBtn.textContent = "Đã đăng ký";
+                    subBtn.style.background = "#e0e0e0";
+                    subBtn.style.color = "#0f0f0f";
+                } else {
+                    subBtn.textContent = "Đăng ký";
+                    subBtn.style.background = "#0f0f0f";
+                    subBtn.style.color = "white";
+                }
+            };
+            updateSubUI();
+
+            subBtn.onclick = async () => {
+                const r = await apiFetch("/api/subscribe", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ subscriberId: user.nguoi_dung_id, channelId: creatorId })
                 });
-            }
-            
-            // Nếu không có tên từ server, dùng "Người dùng hệ thống"
-            const userName = v.TenDangNhap || "Người dùng hệ thống";
-            const userId = v.NguoiDungId || "1";
-            const avatarUrl = v.Avatar ? apiUrl(v.Avatar) : "https://cdn-icons-png.flaticon.com/512/149/149071.png";
-            
-            metaEl.style.display = "flex";
-            metaEl.style.alignItems = "center";
-            metaEl.style.gap = "15px";
-            metaEl.style.padding = "10px";
-            metaEl.style.background = "#f9f9f9";
-            metaEl.style.borderLeft = "4px solid #0066ff";
-            
-            metaEl.innerHTML = `
-                <img src="${avatarUrl}" alt="${userName}" style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid #0066ff;">
-                <div style="flex: 1;">
-                    <div style="font-weight: bold; margin-bottom: 4px;">
-                        Đăng bởi: <a href="user.html?id=${userId}" style="color: #0066ff; text-decoration: none;">${userName}</a>
-                    </div>
-                    <div style="font-size: 13px; color: #666;">Ngày đăng: ${dateStr}</div>
-                </div>
-                <button id="detailSubscribeBtn" style="display: none; padding: 8px 20px; border: none; border-radius: 20px; font-weight: bold; cursor: pointer; transition: 0.3s; font-size: 14px;"></button>
-            `;
-
-            // Xử lý nút đăng ký trong chi tiết video
-            const subBtn = document.getElementById("detailSubscribeBtn");
-            const u0 = loadCurrentUser();
-            if (u0 && u0.nguoi_dung_id != userId) {
-                subBtn.style.display = "block";
-                const updateDetailSubUI = async () => {
-                    try {
-                        const r = await apiFetch(`/api/subscribe/status?subscriberId=${u0.nguoi_dung_id}&channelId=${userId}`);
-                        const d = await parseJsonResponse(r);
-                        if (d.subscribed) {
-                            subBtn.textContent = "Đã đăng ký";
-                            subBtn.style.background = "#e0e0e0";
-                            subBtn.style.color = "#606060";
-                        } else {
-                            subBtn.textContent = "Đăng ký";
-                            subBtn.style.background = "#cc0000";
-                            subBtn.style.color = "white";
-                        }
-                    } catch (e) { console.error(e); }
-                };
-                updateDetailSubUI();
-
-                subBtn.onclick = async () => {
-                    try {
-                        const r = await apiFetch("/api/subscribe", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ subscriberId: u0.nguoi_dung_id, channelId: userId })
-                        });
-                        const d = await parseJsonResponse(r);
-                        if (d.ok) updateDetailSubUI();
-                    } catch (e) { alert("Lỗi đăng ký: " + e.message); }
-                };
-            }
+                const d = await parseJsonResponse(r);
+                if (d.ok) updateSubUI();
+            };
         }
-        const viewCountEl = document.getElementById("viewCount");
-        if (viewCountEl) {
-            const n = Number(v.LuotXem ?? v.luot_xem ?? 0);
-            viewCountEl.textContent = `${Number.isFinite(n) ? n : 0} lượt xem`;
-        }
-        setDetailStatus("", false);
+
+        loadRecommendations(creatorId, id);
+        loadLikeState(id, user);
+
+        // Comments
+        const loadComments = async () => {
+            const r = await apiFetch(`/api/videos/${id}/comments`);
+            const d = await parseJsonResponse(r);
+            if (d.ok) renderComments(d.comments);
+        };
+        loadComments();
+
+        document.getElementById("sendCommentBtn").onclick = async () => {
+            const txt = document.getElementById("commentInput").value.trim();
+            if (!txt) return;
+            const r = await apiFetch(`/api/videos/${id}/comments`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ noi_dung: txt, nguoi_dung_id: user.nguoi_dung_id }),
+            });
+            const d = await parseJsonResponse(r);
+            if (d.ok) {
+                document.getElementById("commentInput").value = "";
+                loadComments();
+            }
+        };
+
+        document.getElementById("likeBtn").onclick = async () => {
+            if (!user) return alert("Đăng nhập để like!");
+            const r = await apiFetch(`/api/videos/${id}/likes/toggle`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ nguoi_dung_id: user.nguoi_dung_id }),
+            });
+            const d = await parseJsonResponse(r);
+            if (d.ok) loadLikeState(id, user);
+        };
+
     } catch (e) {
-        console.error("Lỗi Video JS:", e);
-        setDetailStatus("Lỗi tải thông tin: " + e.message, true);
-        return;
+        setDetailStatus("Lỗi: " + e.message, true);
     }
-
-    await loadLikeState(id, user);
-
-    async function loadComments() {
-        try {
-            const res = await apiFetch(`/api/videos/${encodeURIComponent(id)}/comments`);
-            const data = await parseJsonResponse(res);
-            if (!res.ok || !data.ok) throw new Error(data.error || "Không tải bình luận.");
-            renderComments(data.comments);
-        } catch (e) {
-            setCommentHint(`Không tải bình luận: ${e.message}`, true);
-        }
-    }
-
-    await loadComments();
-
-    document.getElementById("sendCommentBtn")?.addEventListener("click", async () => {
-        const u = loadCurrentUser();
-        if (!u?.nguoi_dung_id) {
-            setCommentHint("Bạn cần đăng nhập.", true);
-            return;
-        }
-        const input = document.getElementById("commentInput");
-        const noiDung = (input?.value || "").trim();
-        if (!noiDung) {
-            setCommentHint("Nhập nội dung bình luận.", true);
-            return;
-        }
-        setCommentHint("Đang gửi…", false);
-        try {
-            const res = await apiFetch(`/api/videos/${encodeURIComponent(id)}/comments`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ noi_dung: noiDung, nguoi_dung_id: u.nguoi_dung_id }),
-            });
-            const data = await parseJsonResponse(res);
-            if (!res.ok || !data.ok) throw new Error(data.error || "Gửi thất bại");
-            if (input) input.value = "";
-            setCommentHint("Đã gửi bình luận.", false);
-            await loadComments();
-        } catch (e) {
-            setCommentHint(e.message || String(e), true);
-        }
-    });
-
-    document.getElementById("likeBtn")?.addEventListener("click", async () => {
-        const u = loadCurrentUser();
-        if (!u?.nguoi_dung_id) {
-            setCommentHint("Bạn cần đăng nhập để thích video.", true);
-            return;
-        }
-        try {
-            const res = await apiFetch(`/api/videos/${encodeURIComponent(id)}/likes/toggle`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ nguoi_dung_id: u.nguoi_dung_id }),
-            });
-            const data = await parseJsonResponse(res);
-            if (!res.ok || !data.ok) throw new Error(data.error || "Không cập nhật lượt thích.");
-            await loadLikeState(id, u);
-        } catch (e) {
-            setCommentHint(e.message || String(e), true);
-        }
-    });
 });

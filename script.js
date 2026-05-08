@@ -719,16 +719,15 @@ async function uploadVideo() {
     }
 
     const input = document.getElementById("videoInput");
-    const container = document.getElementById("videoContainer");
     const titleInput = document.getElementById("titleInput");
     const descriptionInput = document.getElementById("descriptionInput");
-    if (!descriptionInput) {
-        setStatus(
-            "Trang thiếu ô mô tả (id=descriptionInput). Hãy git pull, push GitHub Pages và Ctrl+F5.",
-            true
-        );
-        return;
-    }
+    const uploadBtn = document.getElementById("uploadBtn");
+    const progressContainer = document.getElementById("uploadProgressContainer");
+    const progressBar = document.getElementById("uploadProgressBar");
+    const progressPercent = document.getElementById("uploadPercentage");
+    const progressSpeed = document.getElementById("uploadSpeed");
+    const progressTime = document.getElementById("uploadTimeRemaining");
+    const statusText = document.getElementById("uploadStatusText");
 
     if (input.files.length === 0) {
         alert("Vui lòng chọn video!");
@@ -736,60 +735,95 @@ async function uploadVideo() {
     }
 
     const file = input.files[0];
-    setStatus("Đang upload...", false);
+    const durationSeconds = await getVideoDurationSeconds(file);
+    const titleVal = (titleInput?.value || "").trim();
+    const descVal = (descriptionInput?.value || "").trim();
+    const categoryVal = document.getElementById("categoryInput")?.value;
+    const forKids = document.querySelector('input[name="forKids"]:checked')?.value || "yes";
 
-    try {
-        const durationSeconds = await getVideoDurationSeconds(file);
-        const titleVal = (titleInput?.value || "").trim();
-        const descVal = (descriptionInput.value || "").trim();
-        const categoryVal = document.getElementById("categoryInput")?.value;
-        const forKids = document.querySelector('input[name="forKids"]:checked')?.value || "yes";
+    const form = new FormData();
+    form.append("meta", JSON.stringify({ title: titleVal, mo_ta: descVal }));
+    form.append("title", titleVal);
+    form.append("mo_ta", descVal);
+    if (categoryVal) form.append("categoryId", categoryVal);
+    form.append("forKids", forKids);
+    form.append("thoi_luong", String(durationSeconds));
+    form.append("nguoi_dung_id", String(currentUser.nguoi_dung_id));
+    form.append("video", file);
 
-        const form = new FormData();
-        // Một field JSON: multer luôn đọc được; không phụ thuộc tên field lạ.
-        form.append(
-            "meta",
-            JSON.stringify({
-                title: titleVal,
-                mo_ta: descVal,
-            })
-        );
-        form.append("title", titleVal);
-        form.append("mo_ta", descVal);
-        if (categoryVal) form.append("categoryId", categoryVal);
-        form.append("forKids", forKids);
-        form.append("thoi_luong", String(durationSeconds));
-        if (Number.isFinite(Number(currentUser?.nguoi_dung_id))) {
-            form.append("nguoi_dung_id", String(currentUser.nguoi_dung_id));
+    // Chuẩn bị UI
+    if (progressContainer) progressContainer.style.display = "block";
+    if (uploadBtn) uploadBtn.disabled = true;
+    setStatus("", false);
+
+    const startTime = Date.now();
+
+    const xhr = new XMLHttpRequest();
+    let uploadUrl = apiUrl("/api/videos");
+    
+    xhr.open("POST", uploadUrl, true);
+    xhr.setRequestHeader("ngrok-skip-browser-warning", "1");
+
+    xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+            const percentComplete = (e.loaded / e.total) * 100;
+            const elapsedTime = (Date.now() - startTime) / 1000; // seconds
+            const speedBytes = e.loaded / elapsedTime; // bytes/sec
+            
+            // Format Speed
+            let speedText = "";
+            if (speedBytes > 1024 * 1024) {
+                speedText = (speedBytes / (1024 * 1024)).toFixed(2) + " MB/s";
+            } else {
+                speedText = (speedBytes / 1024).toFixed(2) + " KB/s";
+            }
+
+            // Format Time Remaining
+            const bytesRemaining = e.total - e.loaded;
+            const secondsRemaining = bytesRemaining / speedBytes;
+            let timeText = "--:--";
+            if (secondsRemaining > 0 && Number.isFinite(secondsRemaining)) {
+                const mins = Math.floor(secondsRemaining / 60);
+                const secs = Math.floor(secondsRemaining % 60);
+                timeText = `${mins}:${secs.toString().padStart(2, '0')}`;
+            }
+
+            // Update UI
+            if (progressBar) progressBar.style.width = percentComplete + "%";
+            if (progressPercent) progressPercent.textContent = Math.round(percentComplete) + "%";
+            if (progressSpeed) progressSpeed.textContent = "Tốc độ: " + speedText;
+            if (progressTime) progressTime.textContent = "Còn lại: " + timeText;
         }
-        form.append("video", file);
+    };
 
-        let uploadPath = "/api/videos";
-        if (descVal.length > 0) {
-            const qs = new URLSearchParams({ mo_ta: descVal }).toString();
-            const candidate = `${uploadPath}?${qs}`;
-            uploadPath = candidate.length < 1900 ? candidate : uploadPath;
+    xhr.onload = async () => {
+        if (uploadBtn) uploadBtn.disabled = false;
+        try {
+            const data = JSON.parse(xhr.responseText);
+            if (xhr.status >= 200 && xhr.status < 300 && data.ok) {
+                if (statusText) statusText.textContent = "Hoàn tất!";
+                if (progressBar) progressBar.style.background = "#2ed573";
+                setStatus("Đăng video thành công. Chờ quản trị viên duyệt!", false);
+                input.value = "";
+                if (titleInput) titleInput.value = "";
+                if (descriptionInput) descriptionInput.value = "";
+                setTimeout(() => {
+                    if (progressContainer) progressContainer.style.display = "none";
+                }, 3000);
+            } else {
+                throw new Error(data.error || "Upload failed");
+            }
+        } catch (e) {
+            setStatus("Lỗi upload: " + e.message, true);
         }
+    };
 
-        const res = await apiFetch(uploadPath, {
-            method: "POST",
-            body: form,
-        });
-        const data = await parseJsonResponse(res);
-        if (!res.ok || !data.ok) throw new Error(data.error || "Upload failed");
+    xhr.onerror = () => {
+        if (uploadBtn) uploadBtn.disabled = false;
+        setStatus("Lỗi kết nối khi upload.", true);
+    };
 
-        // Không hiển thị video ngay lập tức vì cần chờ admin duyệt
-        // const card = renderVideoCard(data.video);
-        // if (container) container.prepend(card);
-
-        input.value = "";
-        if (titleInput) titleInput.value = "";
-        if (descriptionInput) descriptionInput.value = "";
-        setStatus("Đăng video thành công. Trở lại Trang Chủ để xem!", false);
-        if (typeof loadHistoryVideos === "function") loadHistoryVideos();
-    } catch (e) {
-        setStatus(`Đăng video thất bại: ${e.message}`, true);
-    }
+    xhr.send(form);
 }
 
 window.addEventListener("DOMContentLoaded", () => {

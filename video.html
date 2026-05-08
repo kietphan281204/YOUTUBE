@@ -322,18 +322,17 @@
                 <div class="video-actions">
                     <div class="action-group">
                         <button type="button" id="likeBtn" class="action-btn">
-                            <span id="likeIcon">👍</span> <span id="likeCount">0</span>
-                        </button>
-                        <div class="separator"></div>
-                        <button type="button" class="action-btn">
-                            <span>👎</span>
+                            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>
+                            <span id="likeCount">0</span>
                         </button>
                     </div>
                     <button type="button" class="action-btn" onclick="shareVideo()">
-                        <span>↪️</span> Chia sẻ
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+                        <span>Chia sẻ</span>
                     </button>
-                    <button type="button" class="action-btn">
-                        <span>📥</span> Tải xuống
+                    <button type="button" class="action-btn" onclick="downloadVideo()">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        <span>Tải xuống</span>
                     </button>
                     <button type="button" class="action-btn circle-btn">
                         <span>...</span>

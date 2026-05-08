@@ -721,8 +721,7 @@ app.get("/api/videos", async (req, res) => {
         (SELECT COUNT(*) FROM dbo.binh_luan bl WHERE bl.video_id = v.video_id) AS SoBinhLuan,
         u.ten_dang_nhap AS TenDangNhap,
         u.anh_dai_dien AS Avatar,
-        v.anh_thumbnail AS ThumbnailUrl,
-        v.duong_dan_anh_bia AS duong_dan_anh_bia,
+        v.duong_dan_anh_bia AS ThumbnailUrl,
         v.danh_cho_tre_em AS ForKids,
         CASE WHEN dk.dang_ky_id IS NOT NULL THEN 1 ELSE 0 END AS IsSubscribed
       FROM dbo.video v

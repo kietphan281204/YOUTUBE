@@ -212,7 +212,8 @@ function videoFromRow(row) {
     CategoryId: L.categoryid ?? L.danh_muc_id ?? null,
     NguoiDungId: L.nguoidungid ?? L.nguoi_dung_id,
     TenDangNhap: L.tendangnhap ?? L.ten_dang_nhap,
-    Avatar: L.avatar ?? L.anh_dai_dien ?? null
+    Avatar: L.avatar ?? L.anh_dai_dien ?? null,
+    ThumbnailUrl: L.thumbnailurl ?? L.anh_thumbnail ?? L.duong_dan_anh_bia ?? null
   };
 }
 
@@ -720,6 +721,8 @@ app.get("/api/videos", async (req, res) => {
         (SELECT COUNT(*) FROM dbo.binh_luan bl WHERE bl.video_id = v.video_id) AS SoBinhLuan,
         u.ten_dang_nhap AS TenDangNhap,
         u.anh_dai_dien AS Avatar,
+        v.anh_thumbnail AS ThumbnailUrl,
+        v.duong_dan_anh_bia AS duong_dan_anh_bia,
         v.danh_cho_tre_em AS ForKids,
         CASE WHEN dk.dang_ky_id IS NOT NULL THEN 1 ELSE 0 END AS IsSubscribed
       FROM dbo.video v
@@ -820,6 +823,7 @@ async function fetchTrendingVideos(req) {
           "v.ngay_tao AS UploadedAt, v.luot_xem AS LuotXem, " +
           "v.so_like AS SoLike, v.so_binh_luan AS SoBinhLuan, v.diem_xu_huong AS DiemXuHuong, " +
           "u.ten_dang_nhap AS TenDangNhap, u.anh_dai_dien AS Avatar, u.nguoi_dung_id AS NguoiDungId, " +
+          "vid.duong_dan_anh_bia AS ThumbnailUrl, " +
           "vid.danh_cho_tre_em AS ForKids " +
           "FROM dbo.video_xu_huong v " +
           "LEFT JOIN dbo.video vid ON v.video_id = vid.video_id " +
@@ -1097,6 +1101,7 @@ app.get("/api/videos/:id", async (req, res) => {
         "SELECT v.video_id AS Id, v.tieu_de AS Title, v.mo_ta AS Description, " +
           "v.duong_dan_video AS RelativeUrl, v.luot_xem AS LuotXem, v.ngay_tao AS UploadedAt, " +
           "v.danh_muc_id AS CategoryId, v.nguoi_dung_id AS NguoiDungId, v.danh_cho_tre_em AS ForKids, " +
+          "v.duong_dan_anh_bia AS ThumbnailUrl, " +
           "u.ten_dang_nhap AS TenDangNhap, u.anh_dai_dien AS Avatar " +
           "FROM dbo.video v " +
           "LEFT JOIN dbo.nguoi_dung u ON v.nguoi_dung_id = u.nguoi_dung_id " +

@@ -90,24 +90,37 @@
         .video-actions {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
         }
 
         .action-btn {
-            background: rgba(0,0,0,0.05);
+            background: #f2f2f2;
             border: none;
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-weight: 600;
+            padding: 0 16px;
+            height: 36px;
+            border-radius: 18px;
+            font-weight: 500;
             cursor: pointer;
             display: flex;
             align-items: center;
             gap: 6px;
             transition: background 0.2s;
+            font-size: 14px;
+            white-space: nowrap;
         }
 
         .action-btn:hover {
-            background: rgba(0,0,0,0.1);
+            background: #e5e5e5;
+        }
+
+        #likeBtn {
+            padding-right: 20px;
+            position: relative;
+        }
+
+        #likeCount {
+            margin-left: 4px;
+            font-weight: 600;
         }
 
         #descriptionBox {
@@ -153,6 +166,7 @@
             margin-bottom: 4px;
             display: -webkit-box;
             -webkit-line-clamp: 2;
+            line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
             line-height: 1.4;

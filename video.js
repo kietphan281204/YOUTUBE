@@ -99,7 +99,7 @@ async function loadRecommendations(creatorId, currentVideoId) {
         const res = await apiFetch(`/api/videos?userId=${creatorId}`);
         const data = await parseJsonResponse(res);
         if (data.ok && Array.isArray(data.videos)) {
-            const filtered = data.videos.filter(v => (v.VideoId || v.video_id) != currentVideoId);
+            const filtered = data.videos.filter(v => (v.Id || v.video_id) != currentVideoId);
             list.innerHTML = "";
             
             if (filtered.length === 0) {
@@ -110,15 +110,19 @@ async function loadRecommendations(creatorId, currentVideoId) {
             filtered.forEach(v => {
                 const card = document.createElement("div");
                 card.className = "rec-card";
-                const vId = v.VideoId || v.video_id;
+                const vId = v.Id || v.video_id;
                 card.onclick = () => window.location.href = `video.html?id=${vId}`;
 
-                const thumb = v.ThumbnailUrl ? apiUrl(v.ThumbnailUrl) : "https://via.placeholder.com/160x90?text=No+Thumb";
+                let thumb = "https://via.placeholder.com/160x90?text=No+Thumb";
+                if (v.ThumbnailUrl && v.ThumbnailUrl.trim() !== "") {
+                    thumb = apiUrl(v.ThumbnailUrl);
+                }
+
                 const views = v.LuotXem || 0;
 
                 card.innerHTML = `
                     <div class="rec-thumb-wrapper">
-                        <img src="${thumb}" class="rec-thumb">
+                        <img src="${thumb}" class="rec-thumb" onerror="this.src='https://via.placeholder.com/160x90?text=No+Thumb'">
                     </div>
                     <div class="rec-info">
                         <div class="rec-title">${escapeHtml(v.Title || "Video")}</div>

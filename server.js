@@ -735,6 +735,12 @@ app.get("/api/videos", async (req, res) => {
       request.input("CatId", sql.Int, catId);
     }
     
+    const targetUserId = Number(req.query.userId);
+    if (Number.isFinite(targetUserId) && targetUserId > 0) {
+      q += " AND v.nguoi_dung_id = @TargetUid";
+      request.input("TargetUid", sql.Int, targetUserId);
+    }
+    
     if (searchQuery) {
       q += " AND (v.tieu_de LIKE @Search OR v.mo_ta LIKE @Search OR u.ten_dang_nhap LIKE @Search)";
       request.input("Search", sql.NVarChar(255), `%${searchQuery}%`);

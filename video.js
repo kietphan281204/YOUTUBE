@@ -204,8 +204,8 @@ window.addEventListener("DOMContentLoaded", async () => {
         document.getElementById("recHeader").textContent = `Video của ${creatorName}`;
 
         // Subscribe Button
-        if (user && user.nguoi_dung_id != creatorId) {
-            const subWrap = document.getElementById("subBtnPlaceholder");
+        const subWrap = document.getElementById("subBtnPlaceholder");
+        if (subWrap && (!user || user.nguoi_dung_id != creatorId)) {
             const subBtn = document.createElement("button");
             subBtn.className = "action-btn";
             subBtn.style.marginLeft = "15px";
@@ -217,21 +217,33 @@ window.addEventListener("DOMContentLoaded", async () => {
             subWrap.appendChild(subBtn);
 
             const updateSubUI = async () => {
-                const r = await apiFetch(`/api/subscribe/status?subscriberId=${user.nguoi_dung_id}&channelId=${creatorId}`);
-                const d = await parseJsonResponse(r);
-                if (d.subscribed) {
-                    subBtn.textContent = "Đã đăng ký";
-                    subBtn.style.background = "#e0e0e0";
-                    subBtn.style.color = "#0f0f0f";
-                } else {
+                if (!user) {
                     subBtn.textContent = "Đăng ký";
                     subBtn.style.background = "#0f0f0f";
                     subBtn.style.color = "white";
+                    return;
                 }
+                try {
+                    const r = await apiFetch(`/api/subscribe/status?subscriberId=${user.nguoi_dung_id}&channelId=${creatorId}`);
+                    const d = await parseJsonResponse(r);
+                    if (d.subscribed) {
+                        subBtn.textContent = "Đã đăng ký";
+                        subBtn.style.background = "#e0e0e0";
+                        subBtn.style.color = "#0f0f0f";
+                    } else {
+                        subBtn.textContent = "Đăng ký";
+                        subBtn.style.background = "#0f0f0f";
+                        subBtn.style.color = "white";
+                    }
+                } catch (e) { console.error(e); }
             };
             updateSubUI();
 
             subBtn.onclick = async () => {
+                if (!user) {
+                    window.location.href = "login.html";
+                    return;
+                }
                 const r = await apiFetch("/api/subscribe", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },

@@ -591,15 +591,26 @@ app.get("/api/subscribe/status", async (req, res) => {
   try {
     const subscriberId = Number(req.query.subscriberId);
     const channelId = Number(req.query.channelId);
-    if (!subscriberId || !channelId) return res.json({ ok: true, subscribed: false });
+    if (!channelId) return res.status(400).json({ ok: false, error: "Thiếu ID kênh" });
 
     const pool = await sql.connect(sqlConfig);
-    const check = await pool.request()
-      .input("Sid", sql.Int, subscriberId)
-      .input("Cid", sql.Int, channelId)
-      .query("SELECT 1 FROM dbo.dang_ky_kenh WHERE nguoi_dung_id = @Sid AND kenh_id = @Cid");
     
-    res.json({ ok: true, subscribed: check.recordset.length > 0 });
+    // Lấy tổng số đăng ký của kênh
+    const countRes = await pool.request()
+      .input("Cid", sql.Int, channelId)
+      .query("SELECT COUNT(*) AS total FROM dbo.dang_ky_kenh WHERE kenh_id = @Cid");
+    const count = countRes.recordset[0].total;
+
+    let subscribed = false;
+    if (subscriberId) {
+      const check = await pool.request()
+        .input("Sid", sql.Int, subscriberId)
+        .input("Cid", sql.Int, channelId)
+        .query("SELECT 1 FROM dbo.dang_ky_kenh WHERE nguoi_dung_id = @Sid AND kenh_id = @Cid");
+      subscribed = check.recordset.length > 0;
+    }
+
+    res.json({ ok: true, subscribed, count });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }

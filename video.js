@@ -113,16 +113,12 @@ async function loadRecommendations(creatorId, currentVideoId) {
                 const vId = v.Id || v.video_id;
                 card.onclick = () => window.location.href = `video.html?id=${vId}`;
 
-                let thumb = "https://via.placeholder.com/160x90?text=No+Thumb";
-                if (v.ThumbnailUrl && v.ThumbnailUrl.trim() !== "") {
-                    thumb = apiUrl(v.ThumbnailUrl);
-                }
-
+                const videoUrl = apiUrl(v.RelativeUrl);
                 const views = v.LuotXem || 0;
 
                 card.innerHTML = `
                     <div class="rec-thumb-wrapper">
-                        <img src="${thumb}" class="rec-thumb" onerror="this.src='https://via.placeholder.com/160x90?text=No+Thumb'">
+                        <video src="${videoUrl}#t=0.1" class="rec-thumb" muted playsinline preload="metadata" onmouseover="this.play()" onmouseout="this.pause(); this.currentTime=0.1;"></video>
                     </div>
                     <div class="rec-info">
                         <div class="rec-title">${escapeHtml(v.Title || "Video")}</div>
@@ -206,6 +202,7 @@ window.addEventListener("DOMContentLoaded", async () => {
         // Subscribe Button
         const subWrap = document.getElementById("subBtnPlaceholder");
         if (subWrap && (!user || user.nguoi_dung_id != creatorId)) {
+            subWrap.innerHTML = ""; // Clear old
             const subBtn = document.createElement("button");
             subBtn.className = "action-btn";
             subBtn.style.marginLeft = "15px";
@@ -214,43 +211,66 @@ window.addEventListener("DOMContentLoaded", async () => {
             subBtn.style.fontWeight = "bold";
             subBtn.style.border = "none";
             subBtn.style.cursor = "pointer";
+            subBtn.style.transition = "all 0.2s";
             subWrap.appendChild(subBtn);
 
             const updateSubUI = async () => {
-                if (!user) {
-                    subBtn.textContent = "Đăng ký";
-                    subBtn.style.background = "#0f0f0f";
-                    subBtn.style.color = "white";
-                    return;
-                }
                 try {
-                    const r = await apiFetch(`/api/subscribe/status?subscriberId=${user.nguoi_dung_id}&channelId=${creatorId}`);
+                    const subscriberId = user ? user.nguoi_dung_id : "";
+                    const r = await apiFetch(`/api/subscribe/status?subscriberId=${subscriberId}&channelId=${creatorId}`);
                     const d = await parseJsonResponse(r);
+                    
+                    // Cập nhật số người đăng ký
+                    const subCountEl = document.getElementById("subCount");
+                    if (subCountEl) {
+                        subCountEl.textContent = `${d.count || 0} người đăng ký`;
+                    }
+
+                    if (!user) {
+                        subBtn.textContent = "Đăng ký";
+                        subBtn.style.background = "#0f0f0f";
+                        subBtn.style.color = "white";
+                        return;
+                    }
+
                     if (d.subscribed) {
                         subBtn.textContent = "Đã đăng ký";
-                        subBtn.style.background = "#e0e0e0";
-                        subBtn.style.color = "#0f0f0f";
+                        subBtn.style.background = "#f2f2f2";
+                        subBtn.style.color = "#606060";
                     } else {
                         subBtn.textContent = "Đăng ký";
                         subBtn.style.background = "#0f0f0f";
                         subBtn.style.color = "white";
                     }
-                } catch (e) { console.error(e); }
+                } catch (e) { console.error("UpdateSubUI Error:", e); }
             };
-            updateSubUI();
+            
+            await updateSubUI();
 
-            subBtn.onclick = async () => {
+            subBtn.onclick = async (e) => {
+                e.stopPropagation();
                 if (!user) {
                     window.location.href = "login.html";
                     return;
                 }
-                const r = await apiFetch("/api/subscribe", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ subscriberId: user.nguoi_dung_id, channelId: creatorId })
-                });
-                const d = await parseJsonResponse(r);
-                if (d.ok) updateSubUI();
+                subBtn.disabled = true;
+                subBtn.style.opacity = "0.5";
+                try {
+                    const r = await apiFetch("/api/subscribe", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ subscriberId: user.nguoi_dung_id, channelId: creatorId })
+                    });
+                    const d = await parseJsonResponse(r);
+                    if (d.ok) {
+                        await updateSubUI();
+                    }
+                } catch (err) {
+                    alert("Lỗi: " + err.message);
+                } finally {
+                    subBtn.disabled = false;
+                    subBtn.style.opacity = "1";
+                }
             };
         }
 

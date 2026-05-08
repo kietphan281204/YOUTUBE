@@ -134,26 +134,45 @@ async function loadRecommendations(creatorId, currentVideoId) {
     }
 }
 
-function downloadVideo() {
+async function downloadVideo() {
     const video = document.getElementById("detailVideo");
+    const dlBtn = document.querySelector('button[onclick="downloadVideo()"]');
     if (!video || !video.src) {
         alert("Không tìm thấy tệp video để tải.");
         return;
     }
 
-    // Cách tải trực tiếp và nhanh hơn (không đợi fetch hết file)
-    const a = document.createElement("a");
-    a.href = video.src;
-    
-    // Lấy tên file từ tiêu đề video
-    const title = document.getElementById("detailTitle")?.textContent || "video";
-    const fileName = `${title.replace(/[/\\?%*:|"<>]/g, '-')}.mp4`;
-    
-    a.setAttribute("download", fileName);
-    a.setAttribute("target", "_blank");
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    const originalText = dlBtn.innerHTML;
+    dlBtn.innerHTML = "<span>⏳ Đang tải...</span>";
+    dlBtn.disabled = true;
+
+    try {
+        const response = await fetch(video.src);
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.style.display = "none";
+        a.href = url;
+        
+        const title = document.getElementById("detailTitle")?.textContent || "video";
+        a.download = `${title.replace(/[/\\?%*:|"<>]/g, '-')}.mp4`;
+        
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+    } catch (e) {
+        console.error("Download failed:", e);
+        // Fallback: Mở trong tab mới nếu fetch bị lỗi
+        const a = document.createElement("a");
+        a.href = video.src;
+        a.target = "_blank";
+        a.download = "";
+        a.click();
+    } finally {
+        dlBtn.innerHTML = originalText;
+        dlBtn.disabled = false;
+    }
 }
 
 async function loadLikeState(videoId, user) {

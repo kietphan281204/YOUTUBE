@@ -3,64 +3,351 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Đăng Video</title>
+    <title>Tải lên video - Website Video</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        :root {
+            --primary-color: #fe2c55;
+            --secondary-color: #25f4ee;
+            --bg-color: #f8f8f8;
+            --border-color: #e3e3e3;
+        }
+
+        body {
+            background-color: var(--bg-color);
+        }
+
+        .upload-container {
+            max-width: 1100px;
+            margin: 40px auto;
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            display: flex;
+            gap: 40px;
+        }
+
+        .upload-form {
+            flex: 1;
+        }
+
+        .upload-preview {
+            width: 320px;
+            background: #fff;
+            border-radius: 32px;
+            border: 8px solid #000;
+            height: 580px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+
+        .preview-header {
+            height: 40px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            font-weight: bold;
+            font-size: 14px;
+            color: #fff;
+            background: rgba(0,0,0,0.2);
+            position: absolute;
+            top: 0; width: 100%; z-index: 2;
+        }
+
+        .preview-video-box {
+            background: #000;
+            height: 100%;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #555;
+        }
+
+        .preview-info {
+            position: absolute;
+            bottom: 20px;
+            left: 15px;
+            color: #fff;
+            z-index: 2;
+        }
+
+        .section-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .section-subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .input-group {
+            margin-bottom: 24px;
+        }
+
+        .input-label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 15px;
+        }
+
+        .upload-box {
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.3s;
+            background: #fafafa;
+        }
+
+        .upload-box:hover {
+            border-color: var(--primary-color);
+            background: #fffafa;
+        }
+
+        .upload-box input {
+            display: none;
+        }
+
+        .text-input, .select-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 15px;
+            background: #f1f1f2;
+            transition: 0.2s;
+        }
+
+        .text-input:focus, .select-input:focus {
+            outline: none;
+            border-color: #bbb;
+            background: #ededee;
+        }
+
+        .tag-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .tag-chip {
+            background: #f1f1f2;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 13px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .tag-chip:hover {
+            background: #e3e3e4;
+        }
+
+        .audience-options {
+            display: flex;
+            gap: 20px;
+            margin-top: 10px;
+        }
+
+        .action-btns {
+            display: flex;
+            gap: 16px;
+            margin-top: 40px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border-radius: 4px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            font-size: 16px;
+            transition: 0.2s;
+        }
+
+        .btn-cancel {
+            background: #fff;
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-cancel:hover {
+            background: #f8f8f8;
+        }
+
+        .btn-post {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .btn-post:hover {
+            background: #e0244a;
+        }
+
+        .btn-post:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        #status {
+            margin-top: 15px;
+            font-weight: 600;
+        }
+    </style>
 </head>
 
 <body>
 
     <header>
-        <h1>Website Video</h1>
+        <h1 style="cursor:pointer;" onclick="window.location.href='index.html'">Website Video</h1>
         <div class="headerActions">
             <button id="homeBtn" onclick="window.location.href='index.html'">Trang chủ</button>
-            <button id="uploadPageBtn" onclick="window.location.href='upload.html'" style="display:none;">Đăng Video</button>
-            <button id="historyBtn" onclick="window.location.href='history.html'" style="display:none;">Lịch sử video</button>
+            <button id="uploadPageBtn" onclick="window.location.href='upload.html'">Đăng Video</button>
+            <button id="subsPageBtn" onclick="window.location.href='subscriptions.html'">Kênh đăng ký</button>
             <button id="loginPageBtn">Tài khoản</button>
         </div>
     </header>
 
     <main>
-        <div id="authStatus"></div>
+        <div class="upload-container">
+            <div class="upload-form">
+                <div class="section-title">Tải lên video</div>
+                <div class="section-subtitle">Đăng video vào tài khoản của bạn</div>
 
-        <h2>Đăng Video</h2>
+                <div class="input-group">
+                    <div class="upload-box" onclick="document.getElementById('videoInput').click()">
+                        <div id="uploadInfo">
+                            <img src="https://cdn-icons-png.flaticon.com/512/338/338214.png" width="40" style="opacity: 0.5; margin-bottom: 10px;">
+                            <div style="font-weight: 600; font-size: 18px;">Chọn video để tải lên</div>
+                            <div style="color: #666; font-size: 14px; margin-top: 4px;">Hoặc kéo và thả tập tin</div>
+                            <div style="color: #999; font-size: 13px; margin-top: 20px;">MP4 hoặc WebM • Độ phân giải cao • Dưới 2GB</div>
+                        </div>
+                        <input type="file" id="videoInput" accept="video/*" onchange="handleFileSelect(event)">
+                    </div>
+                </div>
 
-        <input type="text" id="titleInput" placeholder="Tiêu đề (tuỳ chọn)"
-            style="padding:8px;width:min(520px,100%);margin-bottom:10px;">
-        <select id="categoryInput" style="padding:8px;width:min(520px,100%);margin-bottom:10px;display:block;" onchange="onCategoryChange()">
-            <option value="">-- Chọn danh mục (Tuỳ chọn) --</option>
-        </select>
-        <div style="font-size:13px;color:#444;margin-bottom:6px;">Mô tả video</div>
-        <textarea id="descriptionInput" name="mo_ta" placeholder="Mô tả video (tuỳ chọn)" rows="3"
-            style="padding:8px;width:min(520px,100%);margin-bottom:6px;display:block;"></textarea>
-        
-        <div id="tagSuggestContainer" style="margin-bottom: 15px; display: none; width:min(520px,100%);">
-            <div style="font-size:12px;color:#666;margin-bottom:6px;">Gợi ý thẻ tag (nhấp để thêm vào mô tả):</div>
-            <div id="tagButtons" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
-            
-            <div style="margin-top: 10px; display: flex; gap: 8px;">
-                <input type="text" id="customTagInput" placeholder="Thêm tag (VD: #gamehay)" style="padding: 6px; flex: 1; border: 1px solid #ccc; border-radius: 4px;">
-                <button type="button" onclick="addCustomTag()" style="padding: 6px 12px; border: none; background: #007bff; color: white; border-radius: 4px; cursor: pointer;">Thêm Tag</button>
+                <div class="input-group">
+                    <label class="input-label">Tiêu đề</label>
+                    <input type="text" id="titleInput" class="text-input" placeholder="Tiêu đề video...">
+                </div>
+
+                <div class="input-group">
+                    <label class="input-label">Danh mục</label>
+                    <select id="categoryInput" class="select-input" onchange="onCategoryChange()">
+                        <option value="">-- Chọn danh mục --</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label class="input-label">Mô tả</label>
+                    <textarea id="descriptionInput" class="text-input" rows="4" placeholder="Kể câu chuyện về video của bạn..."></textarea>
+                    
+                    <div id="tagSuggestContainer" style="display: none;">
+                        <div class="tag-container" id="tagButtons"></div>
+                        <div style="margin-top: 12px; display: flex; gap: 8px;">
+                            <input type="text" id="customTagInput" class="text-input" style="padding: 8px; flex: 1;" placeholder="Thêm tag (VD: #game)">
+                            <button type="button" onclick="addCustomTag()" class="btn btn-cancel" style="flex: 0; white-space: nowrap; padding: 0 15px;">Thêm</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label class="input-label">Ai có thể xem video này?</label>
+                    <div class="audience-options">
+                        <label style="cursor:pointer; display: flex; align-items: center; gap: 8px;">
+                            <input type="radio" name="forKids" value="yes" checked> Video cho trẻ em
+                        </label>
+                        <label style="cursor:pointer; display: flex; align-items: center; gap: 8px;">
+                            <input type="radio" name="forKids" value="no"> Video trên 18 tuổi
+                        </label>
+                    </div>
+                </div>
+
+                <div class="action-btns">
+                    <button class="btn btn-cancel" onclick="window.location.href='index.html'">Hủy bỏ</button>
+                    <button id="uploadBtn" class="btn btn-post" onclick="uploadVideo()">Đăng</button>
+                </div>
+
+                <div id="status"></div>
+            </div>
+
+            <div class="upload-preview-container">
+                <div class="upload-preview">
+                    <div class="preview-header">
+                        <span>Đang theo dõi</span>
+                        <span style="border-bottom: 2px solid #fff;">Dành cho bạn</span>
+                    </div>
+                    <div class="preview-video-box">
+                        <div id="videoPreviewPlaceholder">Xem trước video</div>
+                        <video id="videoPreviewEl" style="width: 100%; height: 100%; object-fit: cover; display: none;" autoplay muted loop></video>
+                    </div>
+                    <div class="preview-info">
+                        <div style="font-weight: bold; margin-bottom: 5px;" id="previewUsername">@Username</div>
+                        <div style="font-size: 13px; max-width: 200px;" id="previewDesc">Mô tả video sẽ hiện ở đây...</div>
+                        <div style="font-size: 12px; margin-top: 5px; display: flex; align-items: center; gap: 5px;">
+                            <span style="font-size: 14px;">♫</span> Nhạc gốc - @Username
+                        </div>
+                    </div>
+                    
+                    <!-- Các nút tương tác TikTok -->
+                    <div style="position: absolute; right: 10px; bottom: 80px; display: flex; flex-direction: column; gap: 20px; align-items: center; color: #fff; font-size: 12px;">
+                        <div style="width: 45px; height: 45px; border-radius: 50%; border: 2px solid #fff; background: #ccc;"></div>
+                        <div style="text-align: center;"><span style="font-size: 24px;">❤️</span><br>0</div>
+                        <div style="text-align: center;"><span style="font-size: 24px;">💬</span><br>0</div>
+                        <div style="text-align: center;"><span style="font-size: 24px;">🔖</span><br>0</div>
+                        <div style="text-align: center;"><span style="font-size: 24px;">↪️</span><br>0</div>
+                    </div>
+                </div>
             </div>
         </div>
-        <div style="margin-bottom: 15px; width:min(520px,100%);">
-            <div style="font-size:14px; font-weight:bold; margin-bottom:8px;">Khán giả:</div>
-            <div style="display:flex; gap:15px; align-items:center;">
-                <label style="display:flex; align-items:center; gap:5px; cursor:pointer;">
-                    <input type="radio" name="forKids" value="yes" checked> Video dành cho trẻ em
-                </label>
-                <label style="display:flex; align-items:center; gap:5px; cursor:pointer;">
-                    <input type="radio" name="forKids" value="no"> Video không dành cho trẻ em
-                </label>
-            </div>
-        </div>
-        <input type="file" id="videoInput" accept="video/*">
-        <button id="uploadBtn" onclick="uploadVideo()">Tải lên ngay</button>
-        <div id="status" style="margin-top:10px;"></div>
-
     </main>
+
+    <div id="authStatus" style="display:none;"></div>
 
     <script src="config.js"></script>
     <script src="script.js"></script>
+    <script>
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const info = document.getElementById('uploadInfo');
+                info.innerHTML = `
+                    <div style="color: var(--primary-color); font-weight: bold;">${file.name}</div>
+                    <div style="font-size: 13px; color: #666;">(${(file.size / (1024 * 1024)).toFixed(2)} MB)</div>
+                    <div style="margin-top: 10px; color: #007bff; text-decoration: underline; font-size: 14px;">Nhấp để thay đổi</div>
+                `;
+                
+                // Hiển thị preview
+                const videoPreview = document.getElementById('videoPreviewEl');
+                const placeholder = document.getElementById('videoPreviewPlaceholder');
+                const url = URL.createObjectURL(file);
+                videoPreview.src = url;
+                videoPreview.style.display = 'block';
+                placeholder.style.display = 'none';
+            }
+        }
+
+        // Live preview mô tả
+        document.getElementById('descriptionInput').addEventListener('input', (e) => {
+            document.getElementById('previewDesc').textContent = e.target.value || "Mô tả video sẽ hiện ở đây...";
+        });
+
+        // Hiển thị username trong preview
+        window.addEventListener('DOMContentLoaded', () => {
+            const user = loadCurrentUser();
+            if (user && user.ten_dang_nhap) {
+                document.getElementById('previewUsername').textContent = '@' + user.ten_dang_nhap;
+            }
+        });
+    </script>
 </body>
 
 </html>

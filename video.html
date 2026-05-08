@@ -68,7 +68,24 @@
             gap: 15px;
         }
 
-        .video-meta-info {
+        .video-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin: 12px 0 8px 0;
+            line-height: 1.4;
+            color: #0f0f0f;
+        }
+
+        .video-meta-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .channel-info {
             display: flex;
             align-items: center;
             gap: 12px;
@@ -82,15 +99,33 @@
             background: #ccc;
         }
 
+        .channel-text {
+            display: flex;
+            flex-direction: column;
+        }
+
         .channel-name {
             font-weight: 600;
             font-size: 16px;
+            color: #0f0f0f;
+        }
+
+        .sub-count {
+            font-size: 12px;
+            color: #606060;
         }
 
         .video-actions {
             display: flex;
             align-items: center;
             gap: 8px;
+        }
+
+        .action-group {
+            display: flex;
+            background: #f2f2f2;
+            border-radius: 18px;
+            overflow: hidden;
         }
 
         .action-btn {
@@ -107,29 +142,52 @@
             transition: background 0.2s;
             font-size: 14px;
             white-space: nowrap;
+            color: #0f0f0f;
+        }
+
+        .action-group .action-btn {
+            border-radius: 0;
         }
 
         .action-btn:hover {
             background: #e5e5e5;
         }
 
-        #likeBtn {
-            padding-right: 20px;
-            position: relative;
+        .separator {
+            width: 1px;
+            height: 24px;
+            background: #ccc;
+            align-self: center;
         }
 
-        #likeCount {
-            margin-left: 4px;
-            font-weight: 600;
+        .circle-btn {
+            padding: 0;
+            width: 36px;
+            justify-content: center;
         }
 
-        #descriptionBox {
+        .description-box {
             background: rgba(0,0,0,0.05);
             padding: 12px;
             border-radius: 12px;
             margin-bottom: 24px;
             font-size: 14px;
+            transition: background 0.2s;
+            cursor: pointer;
+        }
+
+        .description-box:hover {
+            background: rgba(0,0,0,0.1);
+        }
+
+        .description-stats {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .description-text {
             white-space: pre-wrap;
+            line-height: 1.4;
         }
 
         /* Recommendations */
@@ -249,33 +307,45 @@
 
             <video id="detailVideo" controls playsinline></video>
             
-            <h1 id="detailTitle">Đang tải video…</h1>
+            <h1 id="detailTitle" class="video-title">Đang tải video…</h1>
             
-            <div class="video-info-row">
-                <div class="video-meta-info" id="channelInfo" style="cursor:pointer;">
-                    <img id="creatorAvatar" src="" alt="Avatar" class="channel-avatar">
-                    <div>
+            <div class="video-meta-row">
+                <div class="channel-info" id="channelInfo" style="cursor:pointer;">
+                    <img id="creatorAvatar" src="https://cdn-icons-png.flaticon.com/512/149/149071.png" alt="Avatar" class="channel-avatar">
+                    <div class="channel-text">
                         <div id="creatorName" class="channel-name">...</div>
-                        <div id="subCount" style="font-size: 12px; color: #606060;">0 người đăng ký</div>
+                        <div id="subCount" class="sub-count">0 người đăng ký</div>
                     </div>
                     <div id="subBtnPlaceholder"></div>
                 </div>
 
                 <div class="video-actions">
-                    <button type="button" id="likeBtn" class="action-btn">
-                        <span id="likeIcon">👍</span> <span id="likeCount">0</span>
-                    </button>
+                    <div class="action-group">
+                        <button type="button" id="likeBtn" class="action-btn">
+                            <span id="likeIcon">👍</span> <span id="likeCount">0</span>
+                        </button>
+                        <div class="separator"></div>
+                        <button type="button" class="action-btn">
+                            <span>👎</span>
+                        </button>
+                    </div>
                     <button type="button" class="action-btn" onclick="shareVideo()">
                         <span>↪️</span> Chia sẻ
+                    </button>
+                    <button type="button" class="action-btn">
+                        <span>📥</span> Tải xuống
+                    </button>
+                    <button type="button" class="action-btn circle-btn">
+                        <span>...</span>
                     </button>
                 </div>
             </div>
 
-            <div id="descriptionBox">
-                <div style="font-weight: 600; margin-bottom: 5px;">
+            <div id="descriptionBox" class="description-box">
+                <div class="description-stats">
                     <span id="viewCount">0</span> lượt xem • <span id="publishDate">...</span>
                 </div>
-                <div id="detailDescription"></div>
+                <div id="detailDescription" class="description-text"></div>
             </div>
 
             <section class="commentsSection">

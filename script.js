@@ -66,11 +66,10 @@ function renderCurrentUser() {
         if (el) {
             const avatarUrl = currentUser.anh_dai_dien ? apiUrl(currentUser.anh_dai_dien) : "https://cdn-icons-png.flaticon.com/512/149/149071.png";
             el.innerHTML = `
-                <div style="display: flex; align-items: center; gap: 12px; padding: 10px 15px; border-radius: 12px; background: rgba(46, 213, 115, 0.1); width: fit-content; margin-bottom: 20px; border: 1px solid rgba(46, 213, 115, 0.3);">
-                    <img src="${avatarUrl}" style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid #2ed573;">
+                <div style="display: flex; align-items: center; gap: 12px; padding: 6px 16px; border-radius: 24px; background: #fff; border: 1px solid #ddd; width: fit-content; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                    <img src="${avatarUrl}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">
                     <div style="display: flex; flex-direction: column;">
-                        <span style="font-weight: 600; color: #2c3e50; font-size: 15px;">Xin chào, ${currentUser.ten_dang_nhap}</span>
-                        <span style="font-size: 12px; color: #7f8c8d;">ID: #${currentUser.nguoi_dung_id}</span>
+                        <span style="font-weight: 600; color: #0f0f0f; font-size: 14px;">Xin chào, ${currentUser.ten_dang_nhap}</span>
                     </div>
                 </div>
             `;

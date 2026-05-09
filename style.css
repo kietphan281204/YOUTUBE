@@ -19,16 +19,28 @@ header {
 }
 
 button {
-    padding: 8px 15px;
+    padding: 8px 18px;
     border: none;
-    background: #007bff;
-    color: white;
+    background: #f2f2f2;
+    color: #0f0f0f;
     cursor: pointer;
-    border-radius: 5px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 14px;
+    transition: background 0.2s;
 }
 
 button:hover {
-    background: #0056b3;
+    background: #e5e5e5;
+}
+
+#loginPageBtn, #uploadBtn {
+    background: #0f0f0f;
+    color: white;
+}
+
+#loginPageBtn:hover, #uploadBtn:hover {
+    background: #272727;
 }
 
 main {

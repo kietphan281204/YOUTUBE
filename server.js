@@ -176,11 +176,38 @@ function hashPassword(raw) {
 async function addNotification(userId, content, link = null) {
   try {
     const pool = await sql.connect(sqlConfig);
+    // 1. Lưu vào Database
     await pool.request()
       .input("Uid", sql.Int, userId)
       .input("Content", sql.NVarChar, content)
       .input("Link", sql.NVarChar, link)
       .query("INSERT INTO dbo.thong_bao (nguoi_dung_id, noi_dung, link) VALUES (@Uid, @Content, @Link)");
+
+    // 2. Gửi Email
+    const userInfo = await pool.request()
+      .input("Uid", sql.Int, userId)
+      .query("SELECT email FROM dbo.nguoi_dung WHERE nguoi_dung_id = @Uid");
+    
+    const userEmail = userInfo.recordset?.[0]?.email;
+    if (userEmail && userEmail.includes("@")) {
+      const fullLink = link ? `${process.env.FRONTEND_ORIGIN || "http://localhost:8080"}/${link}` : "#";
+      const mailOptions = {
+        from: `"TIKTUBE" <${process.env.EMAIL_USER}>`,
+        to: userEmail,
+        subject: "Thông báo mới từ TIKTUBE",
+        html: `<div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px; max-width: 500px; margin: auto;">
+                <h2 style="color: #764ba2; text-align: center;">TIKTUBE Notification</h2>
+                <p style="font-size: 16px; color: #333; line-height: 1.5;">${content}</p>
+                <div style="text-align: center; margin-top: 25px;">
+                  <a href="${fullLink}" style="background: #764ba2; color: white; padding: 12px 25px; text-decoration: none; border-radius: 25px; font-weight: bold;">Xem chi tiết</a>
+                </div>
+                <p style="font-size: 12px; color: #999; margin-top: 20px; text-align: center;">Đây là email tự động từ hệ thống TIKTUBE.</p>
+               </div>`
+      };
+      transporter.sendMail(mailOptions, (err) => {
+        if (err) console.error("[Mail Notify] Error:", err);
+      });
+    }
   } catch (err) {
     console.error("[Notify] Error:", err.message);
   }

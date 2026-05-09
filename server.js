@@ -638,6 +638,27 @@ app.get("/api/subscriptions/:userId", async (req, res) => {
     res.status(500).json({ ok: false, error: err.message });
   }
 });
+app.get("/api/subscribers/:channelId", async (req, res) => {
+  try {
+    const channelId = Number(req.params.channelId);
+    if (!channelId) return res.status(400).json({ ok: false, error: "Thiếu ID kênh" });
+
+    const pool = await sql.connect(sqlConfig);
+    const result = await pool.request()
+      .input("Cid", sql.Int, channelId)
+      .query(`
+        SELECT u.nguoi_dung_id, u.ten_dang_nhap, u.anh_dai_dien, dk.ngay_dang_ky
+        FROM dbo.dang_ky_kenh dk
+        JOIN dbo.nguoi_dung u ON dk.nguoi_dung_id = u.nguoi_dung_id
+        WHERE dk.kenh_id = @Cid
+        ORDER BY dk.ngay_dang_ky DESC
+      `);
+    
+    res.json({ ok: true, subscribers: result.recordset || [] });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
 
 app.get("/api/categories", async (_req, res) => {
   try {

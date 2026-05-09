@@ -68,8 +68,28 @@
     </style>
 </head>
 <body>
-    <header>
-        <h1 style="cursor:pointer;" onclick="window.location.href='index.html'">Website Video</h1>
+    <header style="display: flex; align-items: center; justify-content: space-between; padding: 0 16px; background: #fff; border-bottom: 1px solid #eee; height: 56px;">
+        <div style="display: flex; align-items: center; cursor: pointer; gap: 12px;" onclick="window.location.href='index.html'">
+            <div style="display: flex; width: 80px; height: 36px; border-radius: 4px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+                <div style="flex: 1; background: linear-gradient(to bottom, #ff5e92, #7b1fa2); display: flex; align-items: center; justify-content: center;">
+                    <span style="color: #fff; font-family: 'Arial Black', sans-serif; font-size: 14px; font-weight: 900;">PTK</span>
+                </div>
+                <div style="flex: 1; background: #1a1a1a; display: flex; align-items: center; justify-content: center;">
+                    <svg viewBox="0 0 24 24" width="20" height="20">
+                        <defs>
+                            <linearGradient id="gradSub" x1="0%" y1="0%" x2="0%" y2="100%">
+                                <stop offset="0%" style="stop-color:#ff5e92;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#7b1fa2;stop-opacity:1" />
+                            </linearGradient>
+                        </defs>
+                        <path d="M8 5v14l11-7z" fill="url(#gradSub)"/>
+                    </svg>
+                </div>
+            </div>
+            <h1 style="font-size: 22px; font-weight: 900; margin: 0; letter-spacing: -1.5px; font-family: 'Arial Black', sans-serif;">
+                <span style="color: #000;">TIK</span><span style="color: #ff0000;">TUBE</span>
+            </h1>
+        </div>
         <div class="headerActions">
             <button onclick="window.location.href='index.html'">← Trang chủ</button>
             <div id="authStatus"></div>
@@ -77,71 +97,121 @@
     </header>
 
     <main style="max-width: 1200px; margin: 0 auto; padding: 20px;">
-        <h2 style="margin-bottom: 10px;">Kênh bạn đã đăng ký</h2>
-        <p style="color: #666; margin-bottom: 30px;">Danh sách những người sáng tạo nội dung bạn đang theo dõi.</p>
+        <div style="display: flex; gap: 20px; border-bottom: 2px solid #eee; margin-bottom: 30px;">
+            <button id="tabFollowing" class="tab-btn active" style="padding: 10px 20px; border: none; background: none; font-weight: bold; cursor: pointer; border-bottom: 3px solid #7b1fa2;" onclick="switchTab('following')">ĐANG THEO DÕI</button>
+            <button id="tabFollowers" class="tab-btn" style="padding: 10px 20px; border: none; background: none; font-weight: bold; cursor: pointer; color: #666;" onclick="switchTab('followers')">NGƯỜI ĐĂNG KÝ BẠN</button>
+        </div>
+
+        <div id="sectionTitle">
+            <h2 id="pageTitle" style="margin-bottom: 10px;">Kênh bạn đã đăng ký</h2>
+            <p id="pageDesc" style="color: #666; margin-bottom: 30px;">Danh sách những người sáng tạo nội dung bạn đang theo dõi.</p>
+        </div>
         
         <div id="channelContainer" class="channel-list">
-            <!-- Danh sách kênh sẽ hiện ở đây -->
-            <div class="empty-state">Đang tải danh sách kênh...</div>
+            <div class="empty-state">Đang tải dữ liệu...</div>
         </div>
     </main>
 
     <script src="config.js"></script>
     <script src="script.js"></script>
     <script>
+        let currentTab = 'following';
+
+        async function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.style.color = '#666';
+                btn.style.borderBottom = 'none';
+            });
+            const activeBtn = document.getElementById(tab === 'following' ? 'tabFollowing' : 'tabFollowers');
+            activeBtn.style.color = '#000';
+            activeBtn.style.borderBottom = '3px solid #7b1fa2';
+
+            if (tab === 'following') {
+                document.getElementById("pageTitle").textContent = "Kênh bạn đã đăng ký";
+                document.getElementById("pageDesc").textContent = "Danh sách những người sáng tạo nội dung bạn đang theo dõi.";
+                loadSubscriptions();
+            } else {
+                document.getElementById("pageTitle").textContent = "Người đăng ký bạn";
+                document.getElementById("pageDesc").textContent = "Danh sách những người đang theo dõi kênh của bạn.";
+                loadFollowers();
+            }
+        }
+
         async function loadSubscriptions() {
-            if (!currentUser && typeof loadCurrentUser === "function") {
-                currentUser = loadCurrentUser();
-            }
-            
-            if (!currentUser) {
-                alert("Vui lòng đăng nhập để xem danh sách đăng ký.");
-                window.location.href = "login.html";
-                return;
-            }
+            if (!currentUser && typeof loadCurrentUser === "function") currentUser = loadCurrentUser();
+            if (!currentUser) return window.location.href = "login.html";
 
             const container = document.getElementById("channelContainer");
+            container.innerHTML = '<div class="empty-state">Đang tải...</div>';
 
             try {
                 const res = await apiFetch(`/api/subscriptions/${currentUser.nguoi_dung_id}`);
                 const data = await parseJsonResponse(res);
 
-                if (data.ok && Array.isArray(data.channels)) {
+                if (data.ok) {
                     container.innerHTML = "";
-                    
                     if (data.channels.length === 0) {
-                        container.innerHTML = '<div class="empty-state">Bạn chưa đăng ký kênh nào. Hãy khám phá và ủng hộ các nhà sáng tạo nhé!</div>';
+                        container.innerHTML = '<div class="empty-state">Bạn chưa đăng ký kênh nào.</div>';
                         return;
                     }
-
                     data.channels.forEach(ch => {
                         const card = document.createElement("div");
                         card.className = "channel-card";
                         card.onclick = () => window.location.href = `user.html?id=${ch.nguoi_dung_id}`;
-
                         const avatarUrl = ch.anh_dai_dien ? apiUrl(ch.anh_dai_dien) : "https://cdn-icons-png.flaticon.com/512/149/149071.png";
-                        
                         card.innerHTML = `
-                            <img src="${avatarUrl}" alt="${ch.ten_dang_nhap}" class="channel-avatar">
+                            <img src="${avatarUrl}" class="channel-avatar">
                             <div class="channel-name">${ch.ten_dang_nhap}</div>
                             <div class="channel-meta">${ch.SoVideo || 0} video</div>
                             <button class="unsub-btn" onclick="handleUnsubscribe(event, ${ch.nguoi_dung_id})">Hủy đăng ký</button>
                         `;
                         container.appendChild(card);
                     });
-                } else {
-                    throw new Error(data.error || "Lỗi tải dữ liệu");
                 }
-            } catch (e) {
-                container.innerHTML = `<div class="empty-state" style="color: red;">Lỗi: ${e.message}</div>`;
-            }
+            } catch (e) { container.innerHTML = `<div class="empty-state" style="color: red;">Lỗi: ${e.message}</div>`; }
+        }
+
+        async function loadFollowers() {
+            if (!currentUser && typeof loadCurrentUser === "function") currentUser = loadCurrentUser();
+            const container = document.getElementById("channelContainer");
+            container.innerHTML = '<div class="empty-state">Đang tải...</div>';
+
+            try {
+                const res = await apiFetch(`/api/subscribers/${currentUser.nguoi_dung_id}`);
+                const data = await parseJsonResponse(res);
+
+                if (data.ok) {
+                    container.innerHTML = "";
+                    if (data.subscribers.length === 0) {
+                        container.innerHTML = '<div class="empty-state">Chưa có ai đăng ký kênh của bạn. Hãy đăng tải thêm nhiều video thú vị nhé!</div>';
+                        return;
+                    }
+                    data.subscribers.forEach(sub => {
+                        const card = document.createElement("div");
+                        card.className = "channel-card";
+                        card.onclick = () => window.location.href = `user.html?id=${sub.nguoi_dung_id}`;
+                        const avatarUrl = sub.anh_dai_dien ? apiUrl(sub.anh_dai_dien) : "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+                        
+                        let dateStr = "";
+                        if (sub.ngay_dang_ky) {
+                            dateStr = new Date(sub.ngay_dang_ky).toLocaleDateString("vi-VN");
+                        }
+
+                        card.innerHTML = `
+                            <img src="${avatarUrl}" class="channel-avatar" style="border-color: #333;">
+                            <div class="channel-name">${sub.ten_dang_nhap}</div>
+                            <div class="channel-meta">Đã đăng ký ngày: ${dateStr}</div>
+                        `;
+                        container.appendChild(card);
+                    });
+                }
+            } catch (e) { container.innerHTML = `<div class="empty-state" style="color: red;">Lỗi: ${e.message}</div>`; }
         }
 
         async function handleUnsubscribe(event, channelId) {
-            event.stopPropagation(); // Ngăn việc chuyển trang khi nhấn nút
-            
+            event.stopPropagation();
             if (!confirm("Bạn có chắc chắn muốn hủy đăng ký kênh này?")) return;
-
             try {
                 const res = await apiFetch("/api/subscribe", {
                     method: "POST",
@@ -149,12 +219,8 @@
                     body: JSON.stringify({ subscriberId: currentUser.nguoi_dung_id, channelId: channelId })
                 });
                 const data = await parseJsonResponse(res);
-                if (data.ok) {
-                    loadSubscriptions(); // Tải lại danh sách
-                }
-            } catch (e) {
-                alert("Lỗi: " + e.message);
-            }
+                if (data.ok) loadSubscriptions();
+            } catch (e) { alert("Lỗi: " + e.message); }
         }
 
         window.addEventListener("DOMContentLoaded", () => {

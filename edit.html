@@ -3,14 +3,34 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Sửa Video</title>
+    <title>Sửa Video | TIKTUBE</title>
     <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
-    <header>
-        <h1>Website Video</h1>
+    <header style="display: flex; align-items: center; justify-content: space-between; padding: 0 16px; background: #fff; border-bottom: 1px solid #eee; height: 56px;">
+        <div style="display: flex; align-items: center; cursor: pointer; gap: 12px;" onclick="window.location.href='index.html'">
+            <div style="display: flex; width: 80px; height: 36px; border-radius: 4px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+                <div style="flex: 1; background: linear-gradient(to bottom, #ff5e92, #7b1fa2); display: flex; align-items: center; justify-content: center;">
+                    <span style="color: #fff; font-family: 'Arial Black', sans-serif; font-size: 14px; font-weight: 900;">PTK</span>
+                </div>
+                <div style="flex: 1; background: #1a1a1a; display: flex; align-items: center; justify-content: center;">
+                    <svg viewBox="0 0 24 24" width="20" height="20">
+                        <defs>
+                            <linearGradient id="gradE" x1="0%" y1="0%" x2="0%" y2="100%">
+                                <stop offset="0%" style="stop-color:#ff5e92;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#7b1fa2;stop-opacity:1" />
+                            </linearGradient>
+                        </defs>
+                        <path d="M8 5v14l11-7z" fill="url(#gradE)"/>
+                    </svg>
+                </div>
+            </div>
+            <h1 style="font-size: 22px; font-weight: 900; margin: 0; letter-spacing: -1.5px; font-family: 'Arial Black', sans-serif;">
+                <span style="color: #000;">TIK</span><span style="color: #ff0000;">TUBE</span>
+            </h1>
+        </div>
         <div class="headerActions">
             <button id="homeBtn" onclick="window.location.href='index.html'">Trang chủ</button>
             <button id="uploadPageBtn" onclick="window.location.href='upload.html'" style="display:none;">Đăng Video</button>

@@ -325,6 +325,7 @@ window.addEventListener("DOMContentLoaded", async () => {
         loadComments();
 
         document.getElementById("sendCommentBtn").onclick = async () => {
+            if (!user) return alert("Bạn cần đăng nhập để bình luận!");
             const txt = document.getElementById("commentInput").value.trim();
             if (!txt) return;
             const r = await apiFetch(`/api/videos/${id}/comments`, {

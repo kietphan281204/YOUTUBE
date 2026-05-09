@@ -1458,6 +1458,11 @@ app.post("/api/videos/:id/comments", async (req, res) => {
     // Track daily comment in thong_ke table
     await updateDailyStats(pool, videoId, 'comment');
 
+    const row = inserted.recordset?.[0];
+    const name = await pool
+      .request()
+      .input("Uid", sql.Int, Math.trunc(bodyUserId))
+      .query("SELECT ten_dang_nhap AS TenDangNhap FROM dbo.nguoi_dung WHERE nguoi_dung_id = @Uid");
     const ten = name.recordset?.[0]?.TenDangNhap ?? null;
 
     // Thông báo cho chủ video

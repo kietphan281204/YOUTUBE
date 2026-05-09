@@ -195,13 +195,22 @@ async function addNotification(userId, content, link = null) {
         from: `"TIKTUBE" <${process.env.EMAIL_USER}>`,
         to: userEmail,
         subject: "Thông báo mới từ TIKTUBE",
-        html: `<div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px; max-width: 500px; margin: auto;">
-                <h2 style="color: #764ba2; text-align: center;">TIKTUBE Notification</h2>
-                <p style="font-size: 16px; color: #333; line-height: 1.5;">${content}</p>
-                <div style="text-align: center; margin-top: 25px;">
-                  <a href="${fullLink}" style="background: #764ba2; color: white; padding: 12px 25px; text-decoration: none; border-radius: 25px; font-weight: bold;">Xem chi tiết</a>
+        html: `<div style="font-family: Arial, sans-serif; padding: 0; border: 1px solid #ddd; border-radius: 12px; max-width: 550px; margin: auto; overflow: hidden; background-color: #f9f9f9;">
+                <div style="background: linear-gradient(135deg, #764ba2 0%, #667eea 100%); padding: 25px; text-align: center; color: white;">
+                  <h1 style="margin: 0; font-size: 24px; letter-spacing: 1px;">TIKTUBE</h1>
+                  <p style="margin: 5px 0 0; opacity: 0.8;">Thông báo mới cho bạn</p>
                 </div>
-                <p style="font-size: 12px; color: #999; margin-top: 20px; text-align: center;">Đây là email tự động từ hệ thống TIKTUBE.</p>
+                <div style="padding: 30px; background-color: white;">
+                  <div style="background-color: #f0f2f5; padding: 20px; border-radius: 8px; border-left: 4px solid #764ba2; margin-bottom: 25px;">
+                    <p style="font-size: 16px; color: #333; line-height: 1.6; margin: 0;">${content}</p>
+                  </div>
+                  <div style="text-align: center;">
+                    <a href="${fullLink}" style="display: inline-block; background: #764ba2; color: white; padding: 14px 30px; text-decoration: none; border-radius: 30px; font-weight: bold; box-shadow: 0 4px 10px rgba(118, 75, 162, 0.3);">Xem trên TIKTUBE</a>
+                  </div>
+                </div>
+                <div style="padding: 20px; text-align: center; border-top: 1px solid #eee; background-color: white;">
+                  <p style="font-size: 12px; color: #999; margin: 0;">Bạn nhận được email này vì đã đăng ký thông báo trên TIKTUBE.</p>
+                </div>
                </div>`
       };
       transporter.sendMail(mailOptions, (err) => {
@@ -1513,7 +1522,8 @@ app.post("/api/videos/:id/comments", async (req, res) => {
     const ownerId = videoOwner.recordset?.[0]?.nguoi_dung_id;
     const vTitle = videoOwner.recordset?.[0]?.tieu_de || "video của bạn";
     if (ownerId && ownerId !== bodyUserId) {
-        addNotification(ownerId, `${ten || "Một người dùng"} đã bình luận về video: ${vTitle}`, `video.html?id=${videoId}`);
+        const fullMsg = `${ten || "Một người dùng"} đã bình luận: "${noiDung}" (trên video: ${vTitle})`;
+        addNotification(ownerId, fullMsg, `video.html?id=${videoId}`);
     }
 
     res.json({

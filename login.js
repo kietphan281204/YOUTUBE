@@ -104,7 +104,7 @@ window.addEventListener("DOMContentLoaded", () => {
                         formData.append("avatar", avatarFile);
                     }
 
-                    res = await fetch(apiUrl("/api/auth/register"), {
+                    res = await fetch(apiUrl("/api/auth/register-request"), {
                         method: "POST",
                         headers: { "ngrok-skip-browser-warning": "1" },
                         body: formData,
@@ -128,11 +128,11 @@ window.addEventListener("DOMContentLoaded", () => {
                     setAuthStatus("Đăng nhập thành công!");
                     setTimeout(() => showLoggedState(data.user), 1000);
                 } else {
-                    setAuthStatus("Đăng ký thành công! Bạn có thể đăng nhập ngay.");
-                    // Chuyển sang mode đăng nhập
-                    setTimeout(() => {
-                        document.getElementById('showLogin').click();
-                    }, 2000);
+                    // Chế độ đăng ký: Hiện form nhập mã xác nhận
+                    alert(data.message);
+                    document.getElementById('authForm').style.display = 'none';
+                    document.getElementById('registerVerifySection').style.display = 'block';
+                    document.querySelector('.tab-buttons').style.display = 'none';
                 }
             } catch (err) {
                 setAuthStatus(err.message, true);
@@ -179,6 +179,91 @@ window.addEventListener("DOMContentLoaded", () => {
     });
 
 });
+
+function showForgotPasswordFlow(e) {
+    e.preventDefault();
+    document.getElementById('authForm').style.display = 'none';
+    document.getElementById('recoverySection').style.display = 'block';
+    document.querySelector('.tab-buttons').style.display = 'none';
+}
+
+function hideForgotPasswordFlow() {
+    document.getElementById('authForm').style.display = 'block';
+    document.getElementById('recoverySection').style.display = 'none';
+    document.querySelector('.tab-buttons').style.display = 'flex';
+}
+
+async function sendRecoveryCode() {
+    const email = document.getElementById('recoveryEmail').value.trim();
+    if (!email) return alert("Vui lòng nhập email");
+
+    try {
+        const res = await fetch(apiUrl("/api/auth/forgot-password"), {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "1" },
+            body: JSON.stringify({ email })
+        });
+        const data = await res.json();
+        if (data.ok) {
+            alert(data.message);
+            document.getElementById('step1').style.display = 'none';
+            document.getElementById('step2').style.display = 'block';
+        } else {
+            alert(data.error);
+        }
+    } catch (e) { alert("Lỗi: " + e.message); }
+}
+
+async function resetPassword() {
+    const email = document.getElementById('recoveryEmail').value.trim();
+    const code = document.getElementById('recoveryCode').value.trim();
+    const newPassword = document.getElementById('newPassword').value;
+
+    if (!code || !newPassword) return alert("Vui lòng điền đầy đủ mã và mật khẩu mới");
+
+    try {
+        const res = await fetch(apiUrl("/api/auth/reset-password"), {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "1" },
+            body: JSON.stringify({ email, code, newPassword })
+        });
+        const data = await res.json();
+        if (data.ok) {
+            alert(data.message);
+            hideForgotPasswordFlow();
+        } else {
+            alert(data.error);
+        }
+    } catch (e) { alert("Lỗi: " + e.message); }
+}
+
+async function verifyRegistration() {
+    const email = document.getElementById('email').value.trim();
+    const code = document.getElementById('regVerifyCode').value.trim();
+    if (!code) return alert("Vui lòng nhập mã xác nhận");
+
+    try {
+        const res = await fetch(apiUrl("/api/auth/register-verify"), {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "1" },
+            body: JSON.stringify({ email, code })
+        });
+        const data = await res.json();
+        if (data.ok) {
+            alert("Đăng ký thành công!");
+            cancelRegistration();
+            document.getElementById('showLogin').click();
+        } else {
+            alert(data.error);
+        }
+    } catch (e) { alert("Lỗi: " + e.message); }
+}
+
+function cancelRegistration() {
+    document.getElementById('authForm').style.display = 'block';
+    document.getElementById('registerVerifySection').style.display = 'none';
+    document.querySelector('.tab-buttons').style.display = 'flex';
+}
 
 async function updateAge() {
     const ageInput = document.getElementById("updateAgeInput");

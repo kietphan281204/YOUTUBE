@@ -7,7 +7,17 @@ const sql = require("mssql");
 const crypto = require("crypto");
 const { execFile } = require("child_process");
 
+const nodemailer = require("nodemailer");
 require("dotenv").config();
+
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
+  }
+});
+
 
 const { sqlConfig } = require("./sql.config");
 
@@ -385,47 +395,90 @@ async function backfillVideoDurations() {
   }
 }
 
-app.post("/api/auth/register", upload.single("avatar"), async (req, res) => {
+const registrationRequests = new Map();
+
+app.post("/api/auth/register-request", upload.single("avatar"), async (req, res) => {
   try {
-    // Lấy dữ liệu từ body (hỗ trợ cả snake_case và camelCase)
-    const tenDangNhap = String(req.body?.ten_dang_nhap || req.body?.username || "").trim().slice(0, 255);
-    const email = String(req.body?.email || "").trim().slice(0, 255);
+    const ten_dang_nhap = String(req.body?.ten_dang_nhap || "").trim();
+    const email = String(req.body?.email || "").trim();
     const password = String(req.body?.password || "").trim();
-    const doTuoi = String(req.body?.do_tuoi || "tren18").trim().slice(0, 50);
+    const do_tuoi = String(req.body?.do_tuoi || "18").trim();
 
-    if (!tenDangNhap || !password) {
-      return res.status(400).json({
-        ok: false,
-        error: "Thiếu dữ liệu. Vui lòng nhập Tên đăng nhập và Mật khẩu.",
-      });
+    if (!ten_dang_nhap || !password || !email) {
+      return res.status(400).json({ ok: false, error: "Vui lòng nhập đầy đủ thông tin." });
     }
 
-    const avatarUrl = req.file ? `/uploads/${req.file.filename}` : null;
     const pool = await sql.connect(sqlConfig);
-    const inserted = await pool
-      .request()
-      .input("TenDangNhap", sql.NVarChar(255), tenDangNhap)
-      .input("Email", sql.NVarChar(255), email)
-      .input("MatKhauHash", sql.NVarChar(255), hashPassword(password))
-      .input("Avatar", sql.NVarChar(500), avatarUrl)
-      .input("DoTuoi", sql.NVarChar(50), doTuoi)
-      .query(
-        "INSERT INTO dbo.nguoi_dung (ten_dang_nhap, email, mat_khau_hash, anh_dai_dien, do_tuoi, ngay_tao, ngay_cap_nhat) " +
-          "OUTPUT INSERTED.nguoi_dung_id, INSERTED.ten_dang_nhap, INSERTED.email, INSERTED.anh_dai_dien, INSERTED.do_tuoi " +
-          "VALUES (@TenDangNhap, @Email, @MatKhauHash, @Avatar, @DoTuoi, GETUTCDATE(), GETUTCDATE())"
-      );
+    const check = await pool.request()
+      .input("u", sql.NVarChar, ten_dang_nhap)
+      .input("e", sql.NVarChar, email)
+      .query("SELECT nguoi_dung_id FROM dbo.nguoi_dung WHERE ten_dang_nhap = @u OR email = @e");
 
-    return res.json({ ok: true, user: mapNguoiDungRow(inserted.recordset?.[0] || null) });
-  } catch (err) {
-    if (err?.number === 2627 || err?.number === 2601) {
-      return res.status(409).json({
-        ok: false,
-        error: "Tên đăng nhập hoặc email đã tồn tại.",
-      });
+    if (check.recordset.length > 0) {
+      return res.status(409).json({ ok: false, error: "Tên đăng nhập hoặc Email đã tồn tại." });
     }
-    return res.status(500).json({ ok: false, error: err?.message || String(err) });
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const avatarUrl = req.file ? `/uploads/${req.file.filename}` : null;
+
+    registrationRequests.set(email, {
+      data: { ten_dang_nhap, email, password, do_tuoi, avatarUrl },
+      code,
+      expires: Date.now() + 15 * 60 * 1000
+    });
+
+    const mailOptions = {
+      from: `"TIKTUBE Verification" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: "Mã xác nhận đăng ký tài khoản - TIKTUBE",
+      html: `<div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px; max-width: 500px; margin: auto;">
+              <h2 style="color: #764ba2; text-align: center;">Chào mừng bạn đến với TIKTUBE!</h2>
+              <p>Mã xác nhận để hoàn tất đăng ký của bạn là:</p>
+              <div style="font-size: 32px; font-weight: bold; color: #764ba2; margin: 30px 0; text-align: center; letter-spacing: 5px; background: #f9f9f9; padding: 10px; border-radius: 8px;">${code}</div>
+              <p>Vui lòng nhập mã này tại trang đăng ký để kích hoạt tài khoản.</p>
+             </div>`
+    };
+
+    transporter.sendMail(mailOptions, (err) => {
+      if (err) console.error("[Verify] Mail error:", err);
+    });
+
+    res.json({ ok: true, message: "Mã xác nhận đã được gửi về Email của bạn. Vui lòng kiểm tra!" });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
   }
 });
+
+app.post("/api/auth/register-verify", async (req, res) => {
+  const { email, code } = req.body;
+  const request = registrationRequests.get(email);
+
+  if (!request || request.code !== code || Date.now() > request.expires) {
+    return res.status(400).json({ ok: false, error: "Mã xác nhận không đúng hoặc đã hết hạn." });
+  }
+
+  try {
+    const { ten_dang_nhap, email, password, do_tuoi, avatarUrl } = request.data;
+    const pool = await sql.connect(sqlConfig);
+    const inserted = await pool.request()
+      .input("u", sql.NVarChar, ten_dang_nhap)
+      .input("e", sql.NVarChar, email)
+      .input("p", sql.NVarChar, hashPassword(password))
+      .input("a", sql.NVarChar, avatarUrl)
+      .input("d", sql.NVarChar, do_tuoi)
+      .query(`
+        INSERT INTO dbo.nguoi_dung (ten_dang_nhap, email, mat_khau_hash, anh_dai_dien, do_tuoi, ngay_tao, ngay_cap_nhat)
+        OUTPUT INSERTED.nguoi_dung_id, INSERTED.ten_dang_nhap, INSERTED.email, INSERTED.anh_dai_dien, INSERTED.do_tuoi
+        VALUES (@u, @e, @p, @a, @d, GETUTCDATE(), GETUTCDATE())
+      `);
+
+    registrationRequests.delete(email);
+    res.json({ ok: true, user: mapNguoiDungRow(inserted.recordset[0]) });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 
 app.post("/api/auth/login", async (req, res) => {
   try {
@@ -461,6 +514,74 @@ app.post("/api/auth/login", async (req, res) => {
     return res.status(500).json({ ok: false, error: err?.message || String(err) });
   }
 });
+
+const resetCodes = new Map();
+
+app.post("/api/auth/forgot-password", async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ ok: false, error: "Thiếu email" });
+
+  try {
+    const pool = await sql.connect(sqlConfig);
+    const result = await pool.request()
+      .input("email", sql.NVarChar, email)
+      .query("SELECT nguoi_dung_id FROM dbo.nguoi_dung WHERE email = @email");
+
+    if (result.recordset.length === 0) {
+      return res.status(404).json({ ok: false, error: "Email không tồn tại trong hệ thống" });
+    }
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    resetCodes.set(email, { code, expires: Date.now() + 15 * 60 * 1000 });
+
+    const mailOptions = {
+      from: `"TIKTUBE Recovery" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: "Mã xác nhận khôi phục mật khẩu - TIKTUBE",
+      html: `<div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px; max-width: 500px; margin: auto;">
+              <h2 style="color: #764ba2; text-align: center;">Khôi phục mật khẩu TIKTUBE</h2>
+              <p>Xin chào,</p>
+              <p>Bạn đã yêu cầu khôi phục mật khẩu. Dưới đây là mã xác nhận của bạn (có hiệu lực trong 15 phút):</p>
+              <div style="font-size: 32px; font-weight: bold; color: #ff4757; margin: 30px 0; text-align: center; letter-spacing: 5px; background: #f9f9f9; padding: 10px; border-radius: 8px;">${code}</div>
+              <p style="font-size: 13px; color: #888;">Nếu bạn không yêu cầu điều này, vui lòng bỏ qua email này hoặc liên hệ hỗ trợ.</p>
+             </div>`
+    };
+
+    transporter.sendMail(mailOptions, (err, info) => {
+      if (err) console.error("[Mail] Lỗi:", err);
+      else console.log("[Mail] Đã gửi tới", email, ":", info.response);
+    });
+
+    res.json({ ok: true, message: "Mã xác nhận đã được gửi về Email của bạn!" });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.post("/api/auth/reset-password", async (req, res) => {
+  const { email, code, newPassword } = req.body;
+  if (!email || !code || !newPassword) return res.status(400).json({ ok: false, error: "Vui lòng nhập đầy đủ thông tin" });
+
+  const storedData = resetCodes.get(email);
+  if (!storedData || storedData.code !== code || Date.now() > storedData.expires) {
+    return res.status(400).json({ ok: false, error: "Mã xác nhận không đúng hoặc đã hết hạn" });
+  }
+
+  try {
+    const pool = await sql.connect(sqlConfig);
+    const hashed = hashPassword(newPassword);
+    await pool.request()
+      .input("email", sql.NVarChar, email)
+      .input("pass", sql.NVarChar, hashed)
+      .query("UPDATE dbo.nguoi_dung SET mat_khau_hash = @pass WHERE email = @email");
+
+    resetCodes.delete(email);
+    res.json({ ok: true, message: "Đổi mật khẩu thành công! Bạn có thể đăng nhập ngay bằng mật khẩu mới." });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 
 app.post("/api/auth/update-avatar", upload.single("avatar"), async (req, res) => {
   try {

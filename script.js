@@ -100,7 +100,78 @@ function updateUploadAccess() {
     if (uploadPageBtn) uploadPageBtn.style.display = canUpload ? "inline-block" : "none";
     const subsPageBtn = document.getElementById("subsPageBtn");
     if (subsPageBtn) subsPageBtn.style.display = canUpload ? "inline-block" : "none";
+
+    const notifWrapper = document.getElementById("notifWrapper");
+    if (notifWrapper) {
+        notifWrapper.style.display = canUpload ? "block" : "none";
+        if (canUpload) {
+            loadNotifications();
+            // Xử lý đóng/mở dropdown
+            const bell = document.getElementById("notifBell");
+            const dropdown = document.getElementById("notifDropdown");
+            if (bell && dropdown) {
+                bell.onclick = (e) => {
+                    e.stopPropagation();
+                    dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+                    if (dropdown.style.display === "block") loadNotifications();
+                };
+                window.addEventListener("click", () => dropdown.style.display = "none");
+                dropdown.onclick = (e) => e.stopPropagation();
+            }
+        }
+    }
 }
+
+async function loadNotifications() {
+    if (!currentUser) return;
+    try {
+        const res = await apiFetch(`/api/notifications/${currentUser.nguoi_dung_id || currentUser.id}`);
+        const data = await res.json();
+        if (data.ok) {
+            const list = data.notifications || [];
+            const unread = list.filter(n => !n.da_xem).length;
+            const badge = document.getElementById("notifBadge");
+            if (badge) {
+                if (unread > 0) {
+                    badge.textContent = unread > 99 ? "99+" : unread;
+                    badge.style.display = "flex";
+                } else {
+                    badge.style.display = "none";
+                }
+            }
+
+            const notifList = document.getElementById("notifList");
+            if (notifList) {
+                if (list.length === 0) {
+                    notifList.innerHTML = `<div style="text-align: center; color: #999; padding: 20px; font-size: 13px;">Không có thông báo nào</div>`;
+                } else {
+                    notifList.innerHTML = list.map(n => `
+                        <div onclick="window.location.href='${n.link || '#'}'" style="padding: 10px; border-bottom: 1px solid #f4f4f4; cursor: pointer; background: ${n.da_xem ? 'transparent' : '#f0f7ff'}; transition: background 0.2s;">
+                            <div style="font-size: 13px; color: #333; line-height: 1.4;">${n.noi_dung}</div>
+                            <div style="font-size: 11px; color: #999; margin-top: 4px;">${new Date(n.ngay_tao).toLocaleString()}</div>
+                        </div>
+                    `).join('');
+                }
+            }
+        }
+    } catch (err) { console.error("Lỗi tải thông báo:", err); }
+}
+
+async function markAllNotifsRead() {
+    if (!currentUser) return;
+    try {
+        const res = await apiFetch("/api/notifications/mark-read", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId: currentUser.nguoi_dung_id || currentUser.id })
+        });
+        const data = await res.json();
+        if (data.ok) loadNotifications();
+    } catch (err) { console.error("Lỗi đánh dấu đã đọc:", err); }
+}
+
+// Kiểm tra định kỳ mỗi 60 giây
+setInterval(loadNotifications, 60000);
 
 function pickVideoDescription(v) {
     if (!v || typeof v !== "object") return "";

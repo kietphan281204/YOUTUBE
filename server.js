@@ -159,6 +159,19 @@ function hashPassword(raw) {
   return crypto.createHash("sha256").update(String(raw || ""), "utf8").digest("hex");
 }
 
+async function addNotification(userId, content, link = null) {
+  try {
+    const pool = await sql.connect(sqlConfig);
+    await pool.request()
+      .input("Uid", sql.Int, userId)
+      .input("Content", sql.NVarChar, content)
+      .input("Link", sql.NVarChar, link)
+      .query("INSERT INTO dbo.thong_bao (nguoi_dung_id, noi_dung, link) VALUES (@Uid, @Content, @Link)");
+  } catch (err) {
+    console.error("[Notify] Error:", err.message);
+  }
+}
+
 function mapNguoiDungRow(row) {
   if (!row) return null;
   return {
@@ -610,6 +623,32 @@ app.post("/api/auth/update-avatar", upload.single("avatar"), async (req, res) =>
   }
 });
 
+app.get("/api/notifications/:userId", async (req, res) => {
+  try {
+    const userId = Number(req.params.userId);
+    const pool = await sql.connect(sqlConfig);
+    const result = await pool.request()
+      .input("Uid", sql.Int, userId)
+      .query("SELECT * FROM dbo.thong_bao WHERE nguoi_dung_id = @Uid ORDER BY ngay_tao DESC");
+    res.json({ ok: true, notifications: result.recordset || [] });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.post("/api/notifications/mark-read", async (req, res) => {
+  try {
+    const userId = Number(req.body.userId);
+    const pool = await sql.connect(sqlConfig);
+    await pool.request()
+      .input("Uid", sql.Int, userId)
+      .query("UPDATE dbo.thong_bao SET da_xem = 1 WHERE nguoi_dung_id = @Uid");
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 app.post("/api/auth/update-age", async (req, res) => {
   try {
     const userId = Number(req.body.nguoi_dung_id);
@@ -701,6 +740,14 @@ app.post("/api/subscribe", async (req, res) => {
         .input("Sid", sql.Int, subscriberId)
         .input("Cid", sql.Int, channelId)
         .query("INSERT INTO dbo.dang_ky_kenh (nguoi_dung_id, kenh_id) VALUES (@Sid, @Cid)");
+
+      // Thông báo cho chủ kênh
+      const subInfo = await pool.request()
+        .input("Sid", sql.Int, subscriberId)
+        .query("SELECT ten_dang_nhap FROM dbo.nguoi_dung WHERE nguoi_dung_id = @Sid");
+      const subName = subInfo.recordset?.[0]?.ten_dang_nhap || "Một người dùng";
+      addNotification(channelId, `${subName} đã đăng ký kênh của bạn!`, `user.html?id=${subscriberId}`);
+
       return res.json({ ok: true, subscribed: true });
     }
   } catch (err) {
@@ -1411,12 +1458,17 @@ app.post("/api/videos/:id/comments", async (req, res) => {
     // Track daily comment in thong_ke table
     await updateDailyStats(pool, videoId, 'comment');
 
-    const row = inserted.recordset?.[0];
-    const name = await pool
-      .request()
-      .input("Uid", sql.Int, Math.trunc(bodyUserId))
-      .query("SELECT ten_dang_nhap AS TenDangNhap FROM dbo.nguoi_dung WHERE nguoi_dung_id = @Uid");
     const ten = name.recordset?.[0]?.TenDangNhap ?? null;
+
+    // Thông báo cho chủ video
+    const videoOwner = await pool.request()
+      .input("Vid", sql.Int, videoId)
+      .query("SELECT nguoi_dung_id, tieu_de FROM dbo.video WHERE video_id = @Vid");
+    const ownerId = videoOwner.recordset?.[0]?.nguoi_dung_id;
+    const vTitle = videoOwner.recordset?.[0]?.tieu_de || "video của bạn";
+    if (ownerId && ownerId !== bodyUserId) {
+        addNotification(ownerId, `${ten || "Một người dùng"} đã bình luận về video: ${vTitle}`, `video.html?id=${videoId}`);
+    }
 
     res.json({
       ok: true,

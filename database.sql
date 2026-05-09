@@ -326,3 +326,17 @@ BEGIN
   );
 END
 GO
+-- Bảng thông báo
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'dbo.thong_bao') AND type in (N'U'))
+BEGIN
+  CREATE TABLE dbo.thong_bao (
+    thong_bao_id INT IDENTITY(1,1) PRIMARY KEY,
+    nguoi_dung_id INT NOT NULL, -- Người nhận thông báo
+    noi_dung NVARCHAR(1000) NOT NULL,
+    link NVARCHAR(500), -- Ví dụ: video.html?id=123
+    da_xem BIT DEFAULT 0,
+    ngay_tao DATETIME DEFAULT GETDATE(),
+    CONSTRAINT FK_thong_bao_nguoi_dung FOREIGN KEY (nguoi_dung_id) REFERENCES dbo.nguoi_dung(nguoi_dung_id)
+  );
+END
+GO

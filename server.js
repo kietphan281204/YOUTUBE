@@ -78,7 +78,7 @@ async function ensureColumnsExist() {
         );
       END
 
-      // Tạo bảng thông báo nếu chưa có
+      -- Tạo bảng thông báo nếu chưa có
       IF OBJECT_ID('dbo.thong_bao', 'U') IS NULL
       BEGIN
         CREATE TABLE dbo.thong_bao (

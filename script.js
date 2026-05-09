@@ -124,13 +124,19 @@ function updateUploadAccess() {
 
 async function loadNotifications() {
     if (!currentUser) return;
+    const uid = currentUser.nguoi_dung_id || currentUser.id || currentUser.ma_nguoi_dung;
+    if (!uid) return;
+
+    const notifList = document.getElementById("notifList");
+    const badge = document.getElementById("notifBadge");
+
     try {
-        const res = await apiFetch(`/api/notifications/${currentUser.nguoi_dung_id || currentUser.id}`);
+        const res = await apiFetch(`/api/notifications/${uid}`);
         const data = await res.json();
         if (data.ok) {
             const list = data.notifications || [];
             const unread = list.filter(n => !n.da_xem).length;
-            const badge = document.getElementById("notifBadge");
+            
             if (badge) {
                 if (unread > 0) {
                     badge.textContent = unread > 99 ? "99+" : unread;
@@ -140,7 +146,6 @@ async function loadNotifications() {
                 }
             }
 
-            const notifList = document.getElementById("notifList");
             if (notifList) {
                 if (list.length === 0) {
                     notifList.innerHTML = `<div style="text-align: center; color: #999; padding: 20px; font-size: 13px;">Không có thông báo nào</div>`;
@@ -153,17 +158,23 @@ async function loadNotifications() {
                     `).join('');
                 }
             }
+        } else {
+            if (notifList) notifList.innerHTML = `<div style="color: red; padding: 10px; font-size: 12px;">Lỗi: ${data.error}</div>`;
         }
-    } catch (err) { console.error("Lỗi tải thông báo:", err); }
+    } catch (err) { 
+        console.error("Lỗi tải thông báo:", err);
+        if (notifList) notifList.innerHTML = `<div style="color: red; padding: 10px; font-size: 12px;">Không thể kết nối Server</div>`;
+    }
 }
 
 async function markAllNotifsRead() {
     if (!currentUser) return;
+    const uid = currentUser.nguoi_dung_id || currentUser.id || currentUser.ma_nguoi_dung;
     try {
         const res = await apiFetch("/api/notifications/mark-read", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ userId: currentUser.nguoi_dung_id || currentUser.id })
+            body: JSON.stringify({ userId: uid })
         });
         const data = await res.json();
         if (data.ok) loadNotifications();

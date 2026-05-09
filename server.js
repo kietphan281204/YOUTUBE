@@ -77,8 +77,22 @@ async function ensureColumnsExist() {
           CONSTRAINT UQ_DangKy UNIQUE (nguoi_dung_id, kenh_id)
         );
       END
+
+      // Tạo bảng thông báo nếu chưa có
+      IF OBJECT_ID('dbo.thong_bao', 'U') IS NULL
+      BEGIN
+        CREATE TABLE dbo.thong_bao (
+          thong_bao_id INT IDENTITY(1,1) PRIMARY KEY,
+          nguoi_dung_id INT NOT NULL,
+          noi_dung NVARCHAR(1000) NOT NULL,
+          link NVARCHAR(500),
+          da_xem BIT DEFAULT 0,
+          ngay_tao DATETIME DEFAULT GETUTCDATE(),
+          CONSTRAINT FK_thong_bao_nguoi_dung FOREIGN KEY (nguoi_dung_id) REFERENCES dbo.nguoi_dung(nguoi_dung_id)
+        );
+      END
     `);
-    console.log("[db] Checked/Added missing columns and tables: do_tuoi, danh_cho_tre_em, dang_ky_kenh");
+    console.log("[db] Checked/Added missing columns and tables: do_tuoi, danh_cho_tre_em, dang_ky_kenh, thong_bao");
   } catch (err) {
     console.error("[db] Error ensuring database structure:", err.message);
   }

@@ -438,16 +438,23 @@ window.addEventListener("DOMContentLoaded", async () => {
         const recordWatchHistory = async () => {
             if (!user) return;
             const uid = user.nguoi_dung_id || user.id || user.ma_nguoi_dung;
+            const vid = Number(id);
+            if (!uid || !vid) return;
+
+            console.log(`[History] Recording watch for User:${uid}, Video:${vid}`);
             try {
-                await apiFetch("/api/history/watch", {
+                const res = await apiFetch("/api/history/watch", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ userId: uid, videoId: id })
+                    body: JSON.stringify({ userId: uid, videoId: vid })
                 });
-            } catch (err) { console.error("Lỗi lưu lịch sử xem:", err); }
+                const result = await res.json();
+                if (!result.ok) console.warn("[History] Save failed:", result.error);
+                else console.log("[History] Watch recorded successfully");
+            } catch (err) { console.error("[History] Error:", err); }
         };
 
-        // Chỉ ghi nhận lịch sử sau khi người dùng xem được ít nhất 1 giây hoặc metadata đã load
+        // Ghi nhận lịch sử khi video bắt đầu phát
         videoEl.onplay = () => {
             if (!videoEl.dataset.recorded) {
                 videoEl.dataset.recorded = "true";

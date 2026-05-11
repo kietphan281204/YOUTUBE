@@ -90,9 +90,20 @@ async function ensureColumnsExist() {
           ngay_tao DATETIME DEFAULT GETUTCDATE(),
           CONSTRAINT FK_thong_bao_nguoi_dung FOREIGN KEY (nguoi_dung_id) REFERENCES dbo.nguoi_dung(nguoi_dung_id)
         );
+      -- Tạo bảng lịch sử xem nếu chưa có
+      IF OBJECT_ID('dbo.lich_su_xem', 'U') IS NULL
+      BEGIN
+        CREATE TABLE dbo.lich_su_xem (
+          lich_su_id INT IDENTITY(1,1) PRIMARY KEY,
+          nguoi_dung_id INT NOT NULL,
+          video_id INT NOT NULL,
+          thoi_gian_xem DATETIME DEFAULT GETDATE(),
+          CONSTRAINT FK_lich_su_xem_nguoi_dung FOREIGN KEY (nguoi_dung_id) REFERENCES dbo.nguoi_dung(nguoi_dung_id),
+          CONSTRAINT FK_lich_su_xem_video FOREIGN KEY (video_id) REFERENCES dbo.video(video_id) ON DELETE CASCADE
+        );
       END
     `);
-    console.log("[db] Checked/Added missing columns and tables: do_tuoi, danh_cho_tre_em, dang_ky_kenh, thong_bao");
+    console.log("[db] Checked/Added missing columns and tables: do_tuoi, danh_cho_tre_em, dang_ky_kenh, thong_bao, lich_su_xem");
   } catch (err) {
     console.error("[db] Error ensuring database structure:", err.message);
   }

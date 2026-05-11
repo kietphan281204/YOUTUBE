@@ -462,7 +462,95 @@ window.addEventListener("DOMContentLoaded", async () => {
             }
         };
 
+        // Khởi tạo Live Chat
+        initLiveChat(id);
+
     } catch (e) {
         setDetailStatus("Lỗi: " + e.message, true);
     }
 });
+
+// --- Live Chat Socket Logic ---
+function initLiveChat(videoId) {
+    if (!videoId) return;
+
+    // Chờ socket sẵn sàng (từ script.js)
+    const checkSocket = setInterval(() => {
+        if (typeof socket !== "undefined" && socket) {
+            clearInterval(checkSocket);
+            setupChat();
+        }
+    }, 500);
+
+    function setupChat() {
+        const chatMessages = document.getElementById("chatMessages");
+        const chatInput = document.getElementById("chatInput");
+        const sendChatBtn = document.getElementById("sendChatBtn");
+        const chatInputArea = document.getElementById("chatInputArea");
+        const chatLoginPrompt = document.getElementById("chatLoginPrompt");
+        const user = loadCurrentUser();
+
+        if (!user) {
+            if (chatInputArea) chatInputArea.style.display = "none";
+            if (chatLoginPrompt) chatLoginPrompt.style.display = "block";
+        }
+
+        socket.emit("join-video-chat", videoId);
+
+        const appendMessage = (data) => {
+            if (!chatMessages) return;
+            const msgDiv = document.createElement("div");
+            msgDiv.style.display = "flex";
+            msgDiv.style.gap = "10px";
+            msgDiv.style.fontSize = "13px";
+            msgDiv.style.lineHeight = "1.4";
+            msgDiv.style.animation = "fadeIn 0.3s ease";
+            
+            const avatar = data.avatar ? apiUrl(data.avatar) : "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+            
+            msgDiv.innerHTML = `
+                <img src="${avatar}" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover; flex-shrink: 0; background: #eee;">
+                <div>
+                    <span style="font-weight: 700; color: #606060; margin-right: 4px;">${escapeHtml(data.username)}</span>
+                    <span style="color: #0f0f0f; word-break: break-word;">${escapeHtml(data.content)}</span>
+                </div>
+            `;
+            chatMessages.appendChild(msgDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        };
+
+        socket.on("new-chat-message", (data) => {
+            if (data.videoId == videoId) {
+                appendMessage(data);
+            }
+        });
+
+        const sendMessage = () => {
+            if (!chatInput) return;
+            const content = chatInput.value.trim();
+            if (!content) return;
+            if (!user) {
+                alert("Vui lòng đăng nhập để chat!");
+                return;
+            }
+
+            const data = {
+                videoId: videoId,
+                userId: user.nguoi_dung_id || user.id,
+                username: user.ten_dang_nhap,
+                avatar: user.anh_dai_dien,
+                content: content
+            };
+
+            socket.emit("send-chat-message", data);
+            chatInput.value = "";
+        };
+
+        if (sendChatBtn) sendChatBtn.onclick = sendMessage;
+        if (chatInput) {
+            chatInput.onkeypress = (e) => {
+                if (e.key === "Enter") sendMessage();
+            };
+        }
+    }
+}

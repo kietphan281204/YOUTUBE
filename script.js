@@ -9,6 +9,58 @@ if (loginPageBtn) loginPageBtn.onclick = () => window.location.href = "login.htm
 var API_BASE = typeof window.API_BASE === "string" ? window.API_BASE.replace(/\/+$/, "") : "";
 const AUTH_STORAGE_KEYS = ["current_user", "currentUser"];
 let currentUser = null;
+let socket = null;
+
+function initSocket() {
+    if (typeof io === "undefined") return;
+    // Connect to same host
+    socket = io(API_BASE || undefined);
+    
+    if (currentUser) {
+        const uid = currentUser.nguoi_dung_id || currentUser.id || currentUser.ma_nguoi_dung;
+        if (uid) socket.emit("register", uid);
+    }
+    
+    socket.on("notification", (data) => {
+        showRealtimeNotification(data);
+        loadNotifications(); // Refresh badge and list
+    });
+}
+
+function showRealtimeNotification(n) {
+    const toast = document.createElement("div");
+    toast.style.cssText = `
+        position: fixed; bottom: 20px; right: 20px; 
+        background: #fff; color: #333; padding: 15px; 
+        border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        z-index: 10000; cursor: pointer; transition: all 0.3s ease;
+        border-left: 5px solid #764ba2; display: flex; gap: 12px;
+        align-items: center; max-width: 300px;
+    `;
+    toast.innerHTML = `
+        <div style="background: #f0f0f0; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#764ba2" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+        </div>
+        <div style="flex: 1;">
+            <div style="font-weight: bold; font-size: 14px; margin-bottom: 2px; color: #764ba2;">Thông báo</div>
+            <div style="font-size: 13px; color: #555; line-height: 1.3;">${n.noi_dung || n.content}</div>
+        </div>
+    `;
+    toast.onclick = () => {
+        if (n.link) window.location.href = n.link;
+    };
+    document.body.appendChild(toast);
+    
+    // Slide in effect
+    toast.style.transform = "translateX(120%)";
+    setTimeout(() => toast.style.transform = "translateX(0)", 100);
+
+    setTimeout(() => {
+        toast.style.transform = "translateX(120%)";
+        toast.style.opacity = "0";
+        setTimeout(() => toast.remove(), 400);
+    }, 6000);
+}
 
 function apiUrl(path) {
     const p = String(path || "");
@@ -61,6 +113,10 @@ function loadCurrentUser() {
 }
 
 function renderCurrentUser() {
+    if (currentUser && socket) {
+        const uid = currentUser.nguoi_dung_id || currentUser.id || currentUser.ma_nguoi_dung;
+        if (uid) socket.emit("register", uid);
+    }
     const el = document.getElementById("authStatus");
     if (currentUser?.ten_dang_nhap) {
         if (el) {
@@ -922,10 +978,6 @@ function initDarkMode() {
     }
 }
 
-// Gọi khởi tạo khi trang load
-window.addEventListener("DOMContentLoaded", () => {
-    initDarkMode();
-});
 
 async function saveEditedVideo() {
     const urlParams = new URLSearchParams(window.location.search);
@@ -1116,7 +1168,9 @@ window.addEventListener("DOMContentLoaded", () => {
     if (location.hostname.endsWith("github.io") && !API_BASE) {
         setStatus("Bạn đang mở GitHub Pages nhưng chưa cấu hình backend. Mở `config.js` và set `window.API_BASE`.", true);
     }
+    initDarkMode();
     currentUser = loadCurrentUser();
+    initSocket();
     renderCurrentUser();
     loadCategories();
     loadTrendingVideos();

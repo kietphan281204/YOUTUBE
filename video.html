@@ -429,6 +429,25 @@
         </div>
 
         <div class="video-right-column">
+            <!-- Live Chat Section -->
+            <div id="liveChatWrapper" style="border: 1px solid #ddd; border-radius: 12px; height: 450px; display: flex; flex-direction: column; background: #fff; margin-bottom: 24px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                <div style="padding: 12px; border-bottom: 1px solid #eee; font-weight: bold; background: #f9f9f9;">
+                    Trò chuyện trực tiếp
+                </div>
+                <div id="chatMessages" style="flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px;">
+                    <div style="text-align: center; color: #999; font-size: 12px; margin-top: 20px;">Chào mừng bạn đến với trò chuyện trực tiếp!</div>
+                </div>
+                <div id="chatInputArea" style="padding: 12px; border-top: 1px solid #eee; display: flex; gap: 8px;">
+                    <input type="text" id="chatInput" placeholder="Trò chuyện..." style="flex: 1; border: 1px solid #eee; border-radius: 20px; padding: 8px 15px; outline: none; background: #f2f2f2; font-size: 14px;">
+                    <button id="sendChatBtn" style="background: #065fd4; color: white; border: none; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>
+                    </button>
+                </div>
+                <div id="chatLoginPrompt" style="display: none; padding: 12px; text-align: center; background: #f9f9f9; font-size: 13px; color: #666;">
+                    Vui lòng <a href="login.html" style="color: #065fd4; text-decoration: none; font-weight: 600;">đăng nhập</a> để tham gia trò chuyện
+                </div>
+            </div>
+
             <div class="recommendations-header" id="recHeader">Video cùng kênh</div>
             <div id="recommendationsList">
                 <p style="color: #666; font-size: 14px;">Đang tải đề xuất...</p>
@@ -436,7 +455,9 @@
         </div>
     </main>
 
+    <script src="/socket.io/socket.io.js"></script>
     <script src="config.js"></script>
+    <script src="script.js"></script>
     <script src="video.js"></script>
     <script>
         // Toggle comment buttons

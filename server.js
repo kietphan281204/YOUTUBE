@@ -1,6 +1,8 @@
 const path = require("path");
 const fs = require("fs");
 const express = require("express");
+const http = require("http");
+const { Server } = require("socket.io");
 const cors = require("cors");
 const multer = require("multer");
 const sql = require("mssql");
@@ -90,6 +92,8 @@ async function ensureColumnsExist() {
           ngay_tao DATETIME DEFAULT GETUTCDATE(),
           CONSTRAINT FK_thong_bao_nguoi_dung FOREIGN KEY (nguoi_dung_id) REFERENCES dbo.nguoi_dung(nguoi_dung_id)
         );
+      END
+
       -- Tạo bảng lịch sử xem nếu chưa có
       IF OBJECT_ID('dbo.lich_su_xem', 'U') IS NULL
       BEGIN
@@ -111,6 +115,67 @@ async function ensureColumnsExist() {
 ensureColumnsExist();
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"],
+  }
+});
+
+const userSockets = new Map(); // userId -> Set of socketIds
+
+io.on("connection", (socket) => {
+  socket.on("register", (userId) => {
+    if (!userId) return;
+    const uid = Number(userId);
+    if (!userSockets.has(uid)) userSockets.set(uid, new Set());
+    userSockets.get(uid).add(socket.id);
+    socket.userId = uid;
+    console.log(`[Socket] User ${uid} registered with socket ${socket.id}`);
+  });
+
+  socket.on("join-video-chat", (videoId) => {
+    if (videoId) {
+      socket.join(`video-${videoId}`);
+      console.log(`[Socket] Socket ${socket.id} joined video chat: video-${videoId}`);
+    }
+  });
+
+  socket.on("leave-video-chat", (videoId) => {
+    if (videoId) {
+      socket.leave(`video-${videoId}`);
+    }
+  });
+
+  socket.on("send-chat-message", (data) => {
+    // data: { videoId, userId, username, avatar, content }
+    if (data.videoId) {
+      io.to(`video-${data.videoId}`).emit("new-chat-message", {
+        ...data,
+        timestamp: new Date()
+      });
+    }
+  });
+
+  socket.on("disconnect", () => {
+    if (socket.userId && userSockets.has(socket.userId)) {
+      userSockets.get(socket.userId).delete(socket.id);
+      if (userSockets.get(socket.userId).size === 0) {
+        userSockets.delete(socket.userId);
+      }
+    }
+  });
+});
+
+function sendSocketNotification(userId, data) {
+  const uid = Number(userId);
+  if (userSockets.has(uid)) {
+    userSockets.get(uid).forEach(sid => {
+      io.to(sid).emit("notification", data);
+    });
+  }
+}
 
 // Sau ngrok, client IP thường nằm trong `x-forwarded-for`.
 // bật trust proxy để `req.ip` có ý nghĩa hơn.
@@ -228,6 +293,14 @@ async function addNotification(userId, content, link = null) {
         if (err) console.error("[Mail Notify] Error:", err);
       });
     }
+
+    // 3. Gửi Socket
+    sendSocketNotification(userId, { 
+      noi_dung: content, 
+      link, 
+      ngay_tao: new Date(),
+      da_xem: 0 
+    });
   } catch (err) {
     console.error("[Notify] Error:", err.message);
   }
@@ -2250,9 +2323,9 @@ async function backfillStatistics() {
   await ensureDemoNguoiDung();
   await backfillVideoDurations();
   await backfillStatistics();
-  app.listen(port, () => {
+  server.listen(port, () => {
     // eslint-disable-next-line no-console
-    console.log(`Server running at http://localhost:${port}`);
+    console.log(`Server (with Socket.io) running at http://localhost:${port}`);
   });
 })();
 

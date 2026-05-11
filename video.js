@@ -84,14 +84,16 @@ function renderComments(comments, videoOwnerId) {
             when = date.toLocaleDateString("vi-VN");
         }
 
-        const canDelete = currentUid && (currentUid == c.NguoiDungId || currentUid == videoOwnerId);
+        const cId = c.Id || c.BinhLuanId || c.binh_luan_id;
+        const cOwnerId = c.NguoiDungId || c.nguoi_dung_id;
+        const canDelete = currentUid && (currentUid == cOwnerId || currentUid == videoOwnerId);
 
         row.innerHTML = `
             <img src="${avatar}" class="comment-avatar">
             <div class="comment-content" style="flex: 1;">
                 <div class="comment-author" style="display: flex; justify-content: space-between;">
                     <span>${escapeHtml(who)} <span style="font-weight: normal; color: #606060; font-size: 12px; margin-left: 8px;">${when}</span></span>
-                    ${canDelete ? `<button onclick="deleteComment(${c.BinhLuanId}, event)" style="background: none; border: none; color: #999; cursor: pointer; font-size: 11px;">Xoá</button>` : ''}
+                    ${canDelete ? `<button onclick="deleteComment(${cId}, event)" style="background: none; border: none; color: #999; cursor: pointer; font-size: 11px;">Xoá</button>` : ''}
                 </div>
                 <div class="comment-text">${escapeHtml(c.NoiDung || "")}</div>
             </div>
@@ -102,25 +104,22 @@ function renderComments(comments, videoOwnerId) {
 
 async function deleteComment(id, event) {
     event.stopPropagation();
+    if (!id) return alert("Không tìm thấy ID bình luận");
     if (!confirm("Bạn có chắc muốn xoá bình luận này?")) return;
     const user = loadCurrentUser();
-    const uid = user?.nguoi_dung_id || user?.id;
+    const uid = user?.nguoi_dung_id || user?.id || user?.ma_nguoi_dung;
+    
+    if (!uid) return alert("Lỗi: Không xác định được người dùng. Vui lòng đăng nhập lại.");
+
     try {
         const res = await apiFetch(`/api/comments/${id}?userId=${uid}`, { method: "DELETE" });
         const data = await parseJsonResponse(res);
         if (data.ok) {
-            // Reload comments
-            const params = new URLSearchParams(location.search);
-            const vId = params.get("id");
-            const cRes = await apiFetch(`/api/videos/${vId}/comments`);
-            const cData = await parseJsonResponse(cRes);
-            // Cần lưu lại videoOwnerId để render lại chính xác
-            // Tạm thời reload trang cho nhanh hoặc lưu biến toàn cục
             location.reload(); 
         } else {
-            alert("Lỗi: " + data.error);
+            alert("Lỗi từ server: " + (data.error || "Không thể xoá"));
         }
-    } catch (e) { alert("Lỗi khi xoá bình luận"); }
+    } catch (e) { alert("Lỗi mạng khi xoá bình luận"); }
 }
 
 async function loadRecommendations(categoryId, currentVideoId) {
@@ -394,6 +393,45 @@ window.addEventListener("DOMContentLoaded", async () => {
             });
             const d = await parseJsonResponse(r);
             if (d.ok) loadLikeState(id, user);
+        };
+
+        // Autoplay Logic
+        const videoEl = document.getElementById("detailVideo");
+        const autoplayOverlay = document.getElementById("autoplayOverlay");
+        const autoplayTimer = document.getElementById("autoplayTimer");
+        const cancelAutoplayBtn = document.getElementById("cancelAutoplayBtn");
+        const playNowBtn = document.getElementById("playNowBtn");
+        let autoplayInterval = null;
+
+        const startAutoplay = () => {
+            // Lấy ID video đầu tiên trong danh sách đề xuất
+            const firstRec = document.querySelector(".rec-card");
+            if (!firstRec) return;
+
+            autoplayOverlay.style.display = "flex";
+            let seconds = 5;
+            autoplayTimer.textContent = seconds;
+
+            autoplayInterval = setInterval(() => {
+                seconds--;
+                autoplayTimer.textContent = seconds;
+                if (seconds <= 0) {
+                    clearInterval(autoplayInterval);
+                    firstRec.click(); // Giả lập click để chuyển trang
+                }
+            }, 1000);
+        };
+
+        videoEl.addEventListener("ended", startAutoplay);
+
+        cancelAutoplayBtn.onclick = () => {
+            clearInterval(autoplayInterval);
+            autoplayOverlay.style.display = "none";
+        };
+
+        playNowBtn.onclick = () => {
+            const firstRec = document.querySelector(".rec-card");
+            if (firstRec) firstRec.click();
         };
 
     } catch (e) {

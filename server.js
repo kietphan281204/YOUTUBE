@@ -135,29 +135,6 @@ io.on("connection", (socket) => {
     console.log(`[Socket] User ${uid} registered with socket ${socket.id}`);
   });
 
-  socket.on("join-video-chat", (videoId) => {
-    if (videoId) {
-      socket.join(`video-${videoId}`);
-      console.log(`[Socket] Socket ${socket.id} joined video chat: video-${videoId}`);
-    }
-  });
-
-  socket.on("leave-video-chat", (videoId) => {
-    if (videoId) {
-      socket.leave(`video-${videoId}`);
-    }
-  });
-
-  socket.on("send-chat-message", (data) => {
-    // data: { videoId, userId, username, avatar, content }
-    if (data.videoId) {
-      io.to(`video-${data.videoId}`).emit("new-chat-message", {
-        ...data,
-        timestamp: new Date()
-      });
-    }
-  });
-
   socket.on("disconnect", () => {
     if (socket.userId && userSockets.has(socket.userId)) {
       userSockets.get(socket.userId).delete(socket.id);

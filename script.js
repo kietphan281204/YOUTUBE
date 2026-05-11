@@ -730,24 +730,30 @@ function initDarkMode() {
     const isDark = localStorage.getItem("darkMode") === "true";
     if (isDark) document.body.classList.add("dark-mode");
 
+    const sunIcon = `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>`;
+    const moonIcon = `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>`;
+
     const actions = document.querySelector(".headerActions");
     if (actions) {
         if (document.getElementById("darkToggle")) return;
         const toggle = document.createElement("button");
         toggle.id = "darkToggle";
         toggle.type = "button";
-        toggle.innerHTML = isDark ? "☀️" : "🌙";
-        toggle.style.fontSize = "18px";
+        toggle.innerHTML = isDark ? sunIcon : moonIcon;
         toggle.style.background = "none";
         toggle.style.border = "none";
         toggle.style.padding = "5px";
         toggle.style.cursor = "pointer";
+        toggle.style.display = "flex";
+        toggle.style.alignItems = "center";
+        toggle.style.justifyContent = "center";
+        toggle.style.color = "inherit";
         toggle.title = "Chế độ tối/sáng";
         toggle.onclick = (e) => {
             e.stopPropagation();
             const nowDark = document.body.classList.toggle("dark-mode");
             localStorage.setItem("darkMode", nowDark);
-            toggle.innerHTML = nowDark ? "☀️" : "🌙";
+            toggle.innerHTML = nowDark ? sunIcon : moonIcon;
         };
         actions.prepend(toggle);
     }

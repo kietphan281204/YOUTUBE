@@ -1646,6 +1646,22 @@ app.post("/api/videos/:id/likes/toggle", async (req, res) => {
       liked = true;
       // Track daily like
       await updateDailyStats(pool, videoId, 'like', 1);
+
+      // Thông báo cho chủ kênh
+      const info = await pool.request()
+        .input("Vid", sql.Int, videoId)
+        .input("Uid", sql.Int, userId)
+        .query("SELECT v.nguoi_dung_id, v.tieu_de, u.ten_dang_nhap " +
+               "FROM dbo.video v JOIN dbo.nguoi_dung u ON u.nguoi_dung_id = @Uid " +
+               "WHERE v.video_id = @Vid");
+      
+      const ownerId = info.recordset?.[0]?.nguoi_dung_id;
+      const vTitle = info.recordset?.[0]?.tieu_de || "video";
+      const likerName = info.recordset?.[0]?.ten_dang_nhap || "Một người dùng";
+      
+      if (ownerId && ownerId !== userId) {
+          addNotification(ownerId, `${likerName} đã thích video của bạn: ${vTitle}`, `video.html?id=${videoId}`);
+      }
     }
 
     const cnt = await pool

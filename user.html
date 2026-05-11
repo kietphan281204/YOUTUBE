@@ -73,9 +73,12 @@
         <div class="headerActions" style="display: flex; align-items: center; gap: 8px;">
             <!-- Nút chuông thông báo -->
             <div id="notifWrapper" style="position: relative; display: none;">
-                <button type="button" id="notifBell" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 5px; position: relative;">
-                    🔔
-                    <span id="notifBadge" style="position: absolute; top: 0; right: 0; background: #ff4757; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 11px; display: flex; align-items: center; justify-content: center; display: none;">0</span>
+                <button type="button" id="notifBell" style="background: none; border: none; cursor: pointer; padding: 5px; position: relative; display: flex; align-items: center; justify-content: center;">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                    </svg>
+                    <span id="notifBadge" style="position: absolute; top: -2px; right: -2px; background: #ff4757; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 11px; display: flex; align-items: center; justify-content: center; display: none; border: 2px solid var(--header-bg, #fff);">0</span>
                 </button>
                 <div id="notifDropdown" style="position: absolute; top: 100%; right: 0; background: white; border: 1px solid #ddd; width: 300px; max-height: 400px; overflow-y: auto; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); z-index: 1000; display: none; padding: 10px;">
                     <div style="font-weight: bold; padding-bottom: 8px; border-bottom: 1px solid #eee; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">

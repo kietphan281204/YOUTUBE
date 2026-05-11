@@ -599,6 +599,155 @@ window.addEventListener("DOMContentLoaded", () => {
     }
 });
 
+function initHistoryPage() {
+    const showUploadBtn = document.getElementById("showUploadHistory");
+    const showWatchBtn = document.getElementById("showWatchHistory");
+    const uploadSection = document.getElementById("uploadHistorySection");
+    const watchSection = document.getElementById("watchHistorySection");
+    const clearWatchBtn = document.getElementById("clearWatchHistory");
+
+    if (showUploadBtn && showWatchBtn) {
+        showUploadBtn.onclick = () => {
+            showUploadBtn.classList.add("active");
+            showWatchBtn.classList.remove("active");
+            uploadSection.style.display = "block";
+            watchSection.style.display = "none";
+            loadHistoryVideos();
+        };
+
+        showWatchBtn.onclick = () => {
+            showWatchBtn.classList.add("active");
+            showUploadBtn.classList.remove("active");
+            uploadSection.style.display = "none";
+            watchSection.style.display = "block";
+            loadWatchHistory();
+        };
+    }
+
+    if (clearWatchBtn) {
+        clearWatchBtn.onclick = async () => {
+            if (!currentUser) return;
+            if (!confirm("Bạn có chắc chắn muốn xoá toàn bộ lịch sử xem?")) return;
+            try {
+                const uid = currentUser.nguoi_dung_id || currentUser.id || currentUser.ma_nguoi_dung;
+                const res = await apiFetch(`/api/history/watch/${uid}`, { method: "DELETE" });
+                const data = await res.json();
+                if (data.ok) loadWatchHistory();
+            } catch (err) { console.error(err); }
+        };
+    }
+}
+
+async function loadWatchHistory() {
+    const container = document.getElementById("watchHistoryContainer");
+    if (!container) return;
+    if (!currentUser) {
+        container.innerHTML = "<p>Vui lòng đăng nhập để xem lịch sử.</p>";
+        return;
+    }
+
+    try {
+        const uid = currentUser.nguoi_dung_id || currentUser.id || currentUser.ma_nguoi_dung;
+        const res = await apiFetch(`/api/history/watch/${uid}`);
+        const data = await res.json();
+        if (data.ok) {
+            const videos = data.videos || [];
+            container.innerHTML = "";
+            if (videos.length === 0) {
+                container.innerHTML = "<p style='padding: 20px; color: #666;'>Bạn chưa xem video nào.</p>";
+                return;
+            }
+
+            const table = document.createElement("div");
+            table.className = "historyTable";
+            
+            // Header
+            const header = document.createElement("div");
+            header.className = "historyHeader";
+            ["Video", "Lượt xem", "Thời gian xem", ""].forEach(label => {
+                const cell = document.createElement("div");
+                cell.className = "historyCell";
+                cell.textContent = label;
+                header.appendChild(cell);
+            });
+            table.appendChild(header);
+
+            videos.forEach(v => {
+                table.appendChild(renderWatchHistoryRow(v));
+            });
+            container.appendChild(table);
+        }
+    } catch (err) {
+        container.innerHTML = "<p>Lỗi tải lịch sử xem.</p>";
+    }
+}
+
+function renderWatchHistoryRow(v) {
+    const row = document.createElement("div");
+    row.className = "historyRow";
+    const id = v.Id ?? v.id;
+
+    const infoCell = document.createElement("div");
+    infoCell.className = "historyCell historyInfo";
+
+    const thumbWrapper = document.createElement("div");
+    thumbWrapper.className = "historyThumbnail";
+    const thumbVideo = document.createElement("video");
+    thumbVideo.src = apiUrl(v.RelativeUrl);
+    thumbVideo.muted = true;
+    thumbVideo.preload = "metadata";
+    thumbWrapper.appendChild(thumbVideo);
+
+    const textWrapper = document.createElement("div");
+    textWrapper.className = "historyText";
+    const title = document.createElement("div");
+    title.className = "historyTitle";
+    title.textContent = v.Title || "Video";
+    const uploader = document.createElement("div");
+    uploader.className = "uploaderName";
+    uploader.textContent = v.TenDangNhap || "Ẩn danh";
+    uploader.style.fontSize = "12px";
+    uploader.style.color = "#666";
+    
+    textWrapper.appendChild(title);
+    textWrapper.appendChild(uploader);
+    infoCell.appendChild(thumbWrapper);
+    infoCell.appendChild(textWrapper);
+
+    const viewsCell = document.createElement("div");
+    viewsCell.className = "historyCell";
+    viewsCell.textContent = v.LuotXem || "0";
+
+    const timeCell = document.createElement("div");
+    timeCell.className = "historyCell";
+    timeCell.textContent = new Date(v.UploadedAt).toLocaleString("vi-VN");
+    timeCell.style.fontSize = "12px";
+
+    const actionsCell = document.createElement("div");
+    actionsCell.className = "historyCell historyActions";
+    const deleteBtn = document.createElement("button");
+    deleteBtn.textContent = "Xoá";
+    deleteBtn.style.background = "#f0f0f0";
+    deleteBtn.style.color = "#666";
+    deleteBtn.onclick = async (e) => {
+        e.stopPropagation();
+        const uid = currentUser.nguoi_dung_id || currentUser.id || currentUser.ma_nguoi_dung;
+        const res = await apiFetch(`/api/history/watch/${uid}?videoId=${id}`, { method: "DELETE" });
+        const data = await res.json();
+        if (data.ok) loadWatchHistory();
+    };
+    actionsCell.appendChild(deleteBtn);
+
+    row.appendChild(infoCell);
+    row.appendChild(viewsCell);
+    row.appendChild(timeCell);
+    row.appendChild(actionsCell);
+
+    row.onclick = () => window.location.href = `video.html?id=${id}`;
+
+    return row;
+}
+
 async function loadVideos(categoryId = null, query = "") {
     const container = document.getElementById("videoContainer");
     if (container) {
@@ -991,6 +1140,9 @@ window.addEventListener("DOMContentLoaded", () => {
         const isUploadPage = window.location.pathname.includes("upload.html");
         if (!isHistoryPage && !isUploadPage) {
             loadVideos();
+        }
+        if (isHistoryPage) {
+            initHistoryPage();
         }
     }
 });

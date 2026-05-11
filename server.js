@@ -1054,6 +1054,83 @@ app.get("/api/videos/history/:userId", async (req, res) => {
   }
 });
 
+// API Lấy lịch sử xem (Watch History)
+app.get("/api/history/watch/:userId", async (req, res) => {
+  try {
+    const userId = Number(req.params.userId);
+    if (!userId) return res.status(400).json({ ok: false, error: "Thiếu ID người dùng" });
+
+    const pool = await sql.connect(sqlConfig);
+    const result = await pool.request()
+      .input("Uid", sql.Int, userId)
+      .query(`
+        SELECT 
+          v.video_id AS Id, 
+          v.tieu_de AS Title, 
+          v.mo_ta AS Description, 
+          v.duong_dan_video AS RelativeUrl, 
+          ls.thoi_gian_xem AS UploadedAt, -- Dùng chung tên cột để frontend map
+          v.luot_xem AS LuotXem,
+          u.ten_dang_nhap AS TenDangNhap,
+          u.anh_dai_dien AS Avatar,
+          v.duong_dan_anh_bia AS ThumbnailUrl
+        FROM dbo.lich_su_xem ls
+        JOIN dbo.video v ON ls.video_id = v.video_id
+        LEFT JOIN dbo.nguoi_dung u ON v.nguoi_dung_id = u.nguoi_dung_id
+        WHERE ls.nguoi_dung_id = @Uid
+        ORDER BY ls.thoi_gian_xem DESC
+      `);
+    
+    const rows = (result.recordset || []).map(r => videoFromRow(r));
+    res.json({ ok: true, videos: rows });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// API Xoá lịch sử xem
+app.delete("/api/history/watch/:userId", async (req, res) => {
+  try {
+    const userId = Number(req.params.userId);
+    const videoId = Number(req.query.videoId); // Nếu có videoId thì xoá 1, không thì xoá hết
+
+    const pool = await sql.connect(sqlConfig);
+    const request = pool.request().input("Uid", sql.Int, userId);
+    
+    let q = "DELETE FROM dbo.lich_su_xem WHERE nguoi_dung_id = @Uid";
+    if (videoId) {
+      q += " AND video_id = @Vid";
+      request.input("Vid", sql.Int, videoId);
+    }
+    
+    await request.query(q);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// API Thêm vào lịch sử xem (Thường gọi ngầm khi xem video)
+app.post("/api/history/watch", async (req, res) => {
+  try {
+    const { userId, videoId } = req.body;
+    if (!userId || !videoId) return res.status(400).json({ ok: false, error: "Thiếu thông tin" });
+
+    const pool = await sql.connect(sqlConfig);
+    
+    // Kiểm tra xem đã xem video này chưa trong vòng 1 tiếng qua? 
+    // Hoặc cứ insert mới để biết tần suất. Ở đây ta insert mới.
+    await pool.request()
+      .input("Uid", sql.Int, userId)
+      .input("Vid", sql.Int, videoId)
+      .query("INSERT INTO dbo.lich_su_xem (nguoi_dung_id, video_id) VALUES (@Uid, @Vid)");
+    
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 /**
  * Video xu hướng: đủ điều kiện like / bình luận / lượt xem (mặc định 3 / 3 / 5).
  * Phải khai báo TRƯỚC route /api/videos/:id để không bị coi id = "trending".

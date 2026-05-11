@@ -434,6 +434,27 @@ window.addEventListener("DOMContentLoaded", async () => {
             if (firstRec) firstRec.click();
         };
 
+        // Ghi lại lịch sử xem
+        const recordWatchHistory = async () => {
+            if (!user) return;
+            const uid = user.nguoi_dung_id || user.id || user.ma_nguoi_dung;
+            try {
+                await apiFetch("/api/history/watch", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ userId: uid, videoId: id })
+                });
+            } catch (err) { console.error("Lỗi lưu lịch sử xem:", err); }
+        };
+
+        // Chỉ ghi nhận lịch sử sau khi người dùng xem được ít nhất 1 giây hoặc metadata đã load
+        videoEl.onplay = () => {
+            if (!videoEl.dataset.recorded) {
+                videoEl.dataset.recorded = "true";
+                recordWatchHistory();
+            }
+        };
+
     } catch (e) {
         setDetailStatus("Lỗi: " + e.message, true);
     }

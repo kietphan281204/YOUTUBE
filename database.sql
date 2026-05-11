@@ -340,3 +340,17 @@ BEGIN
   );
 END
 GO
+
+-- ========== BẢNG LỊCH SỬ XEM (WATCH HISTORY) ==========
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'dbo.lich_su_xem') AND type in (N'U'))
+BEGIN
+  CREATE TABLE dbo.lich_su_xem (
+    lich_su_id INT IDENTITY(1,1) PRIMARY KEY,
+    nguoi_dung_id INT NOT NULL,
+    video_id INT NOT NULL,
+    thoi_gian_xem DATETIME DEFAULT GETDATE(),
+    CONSTRAINT FK_lich_su_xem_nguoi_dung FOREIGN KEY (nguoi_dung_id) REFERENCES dbo.nguoi_dung(nguoi_dung_id),
+    CONSTRAINT FK_lich_su_xem_video FOREIGN KEY (video_id) REFERENCES dbo.video(video_id) ON DELETE CASCADE
+  );
+END
+GO

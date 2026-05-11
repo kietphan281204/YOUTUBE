@@ -410,6 +410,23 @@ main {
     color: #fff;
 }
 
+/* Tab buttons for history page */
+.tab-btn {
+    transition: all 0.2s ease;
+}
+
+.tab-btn.active {
+    background: #000 !important;
+    color: #fff !important;
+    border-color: #000 !important;
+}
+
+body.dark-mode .tab-btn.active {
+    background: #fff !important;
+    color: #000 !important;
+    border-color: #fff !important;
+}
+
 .tag-chip {
     background: #e9ecef;
     color: #495057;

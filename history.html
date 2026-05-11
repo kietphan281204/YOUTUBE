@@ -42,11 +42,23 @@
     <main>
         <div id="authStatus"></div>
 
-        <div class="historySection" id="historySection" style="margin-top: 20px; margin-bottom: 30px;">
-            <h2>Lịch sử Đăng Video của bạn</h2>
-            <div id="historyAuthWarning" style="color:#b00020; font-size:14px; margin-bottom: 10px; display:none;">Vui
-                lòng Đăng nhập để xem lại các video bạn đã đăng!</div>
+        <div class="historyTabs" style="display: flex; gap: 10px; margin-bottom: 20px;">
+            <button id="showUploadHistory" class="tab-btn active" style="padding: 10px 20px; cursor: pointer; border-radius: 20px; border: 1px solid #ddd; background: #fff;">Lịch sử Đăng Video</button>
+            <button id="showWatchHistory" class="tab-btn" style="padding: 10px 20px; cursor: pointer; border-radius: 20px; border: 1px solid #ddd; background: #fff;">Lịch sử Xem Video</button>
+        </div>
+
+        <div class="historySection" id="uploadHistorySection">
+            <h2 id="historyTitle">Lịch sử Đăng Video của bạn</h2>
+            <div id="historyAuthWarning" style="color:#b00020; font-size:14px; margin-bottom: 10px; display:none;">Vui lòng Đăng nhập để xem lại các video bạn đã đăng!</div>
             <div id="historyContainer"></div>
+        </div>
+
+        <div class="historySection" id="watchHistorySection" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h2>Lịch sử Xem Video của bạn</h2>
+                <button id="clearWatchHistory" style="padding: 8px 16px; background: #f0f0f0; border: none; border-radius: 4px; cursor: pointer; font-size: 13px;">Xoá tất cả lịch sử xem</button>
+            </div>
+            <div id="watchHistoryContainer"></div>
         </div>
 
     </main>

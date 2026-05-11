@@ -1440,19 +1440,34 @@ app.put("/api/videos/:id", async (req, res) => {
 app.delete("/api/videos/:id", async (req, res) => {
   try {
     const id = Number(req.params.id);
+    const userId = Number(req.query.userId);
+
     if (!Number.isFinite(id) || id <= 0) {
       return res.status(400).json({ ok: false, error: "ID video không hợp lệ." });
     }
+    if (!Number.isFinite(userId) || userId <= 0) {
+      return res.status(401).json({ ok: false, error: "Bạn cần đăng nhập để xoá video." });
+    }
+
     const pool = await sql.connect(sqlConfig);
+
+    // 1. Kiểm tra quyền sở hữu
+    const check = await pool.request()
+      .input("Vid", sql.Int, id)
+      .query("SELECT nguoi_dung_id FROM dbo.video WHERE video_id = @Vid");
     
-    // Xoá các dữ liệu liên quan trước (vì ko có ON DELETE CASCADE toàn bộ)
+    if (!check.recordset?.length) {
+      return res.status(404).json({ ok: false, error: "Không tìm thấy video." });
+    }
+    
+    if (check.recordset[0].nguoi_dung_id !== userId) {
+      return res.status(403).json({ ok: false, error: "Bạn không có quyền xoá video của người khác!" });
+    }
+    
+    // 2. Xoá các dữ liệu liên quan
     await pool.request().input("Vid", sql.Int, id).query("DELETE FROM dbo.binh_luan WHERE video_id = @Vid");
     await pool.request().input("Vid", sql.Int, id).query("DELETE FROM dbo.luot_thich WHERE video_id = @Vid");
-    
-    // Bảng lịch sử có ON DELETE CASCADE trên video, nhưng cứ an toàn
     await pool.request().input("Vid", sql.Int, id).query("DELETE FROM dbo.lich_su_dang_video WHERE video_id = @Vid");
-    
-    // Xoá video chính
     await pool.request().input("Vid", sql.Int, id).query("DELETE FROM dbo.video WHERE video_id = @Vid");
     
     res.json({ ok: true });

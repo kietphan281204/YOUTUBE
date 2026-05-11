@@ -708,12 +708,16 @@ async function loadHistoryVideos() {
 }
 
 async function deleteVideo(id) {
+    if (!currentUser) return alert("Bạn cần đăng nhập để xoá!");
+    const uid = currentUser.nguoi_dung_id || currentUser.id || currentUser.ma_nguoi_dung;
+    if (!confirm("Bạn có chắc chắn muốn xoá video này vĩnh viễn?")) return;
+
     try {
-        const res = await apiFetch(`/api/videos/${id}`, { method: "DELETE" });
+        const res = await apiFetch(`/api/videos/${id}?userId=${uid}`, { method: "DELETE" });
         const data = await parseJsonResponse(res);
         if (data.ok) {
             alert("Đã xoá video thành công.");
-            loadHistoryVideos();
+            if (typeof loadHistoryVideos === "function") loadHistoryVideos();
         } else {
             alert("Lỗi xoá video: " + data.error);
         }
@@ -721,6 +725,38 @@ async function deleteVideo(id) {
         alert("Lỗi mạng khi xoá video");
     }
 }
+
+function initDarkMode() {
+    const isDark = localStorage.getItem("darkMode") === "true";
+    if (isDark) document.body.classList.add("dark-mode");
+
+    const actions = document.querySelector(".headerActions");
+    if (actions) {
+        if (document.getElementById("darkToggle")) return;
+        const toggle = document.createElement("button");
+        toggle.id = "darkToggle";
+        toggle.type = "button";
+        toggle.innerHTML = isDark ? "☀️" : "🌙";
+        toggle.style.fontSize = "18px";
+        toggle.style.background = "none";
+        toggle.style.border = "none";
+        toggle.style.padding = "5px";
+        toggle.style.cursor = "pointer";
+        toggle.title = "Chế độ tối/sáng";
+        toggle.onclick = (e) => {
+            e.stopPropagation();
+            const nowDark = document.body.classList.toggle("dark-mode");
+            localStorage.setItem("darkMode", nowDark);
+            toggle.innerHTML = nowDark ? "☀️" : "🌙";
+        };
+        actions.prepend(toggle);
+    }
+}
+
+// Gọi khởi tạo khi trang load
+window.addEventListener("DOMContentLoaded", () => {
+    initDarkMode();
+});
 
 async function saveEditedVideo() {
     const urlParams = new URLSearchParams(window.location.search);

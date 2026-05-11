@@ -1,16 +1,34 @@
+:root {
+    --bg-color: #f4f4f4;
+    --text-color: #0f0f0f;
+    --header-bg: #fff;
+    --header-border: #eee;
+    --card-bg: #fff;
+    --input-bg: #fff;
+}
+
+body.dark-mode {
+    --bg-color: #0f0f0f;
+    --text-color: #f1f1f1;
+    --header-bg: #181818;
+    --header-border: #333;
+    --card-bg: #1e1e1e;
+    --input-bg: #222;
+}
+
 body {
     font-family: Arial, sans-serif;
     margin: 0;
-    background: #f4f4f4;
+    background: var(--bg-color);
+    color: var(--text-color);
+    transition: background 0.3s, color 0.3s;
 }
 
 header {
-    background: #333;
-    color: white;
-    padding: 15px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    background: var(--header-bg) !important;
+    color: var(--text-color);
+    border-bottom: 1px solid var(--header-border) !important;
+    transition: background 0.3s, border-color 0.3s;
 }
 
 .headerActions {
@@ -404,4 +422,64 @@ main {
 
 .tag-chip:hover {
     background: #dee2e6;
+}
+
+/* Dark Mode Overrides */
+body.dark-mode .videoCard, 
+body.dark-mode .historyRow, 
+body.dark-mode .description-box, 
+body.dark-mode .commentsSection,
+body.dark-mode .rec-card,
+body.dark-mode .channel-info-box {
+    background: var(--card-bg) !important;
+    border-color: var(--header-border) !important;
+    color: var(--text-color) !important;
+}
+
+body.dark-mode .historyHeader {
+    background: #222 !important;
+    color: #aaa !important;
+}
+
+body.dark-mode .videoTitle, 
+body.dark-mode .rec-title,
+body.dark-mode .comment-author {
+    color: #fff !important;
+}
+
+body.dark-mode .uploaderName, 
+body.dark-mode .videoMeta,
+body.dark-mode .rec-meta,
+body.dark-mode .historyTags {
+    color: #aaa !important;
+}
+
+body.dark-mode input, 
+body.dark-mode textarea {
+    background: #222 !important;
+    color: #fff !important;
+    border: 1px solid #444 !important;
+}
+
+body.dark-mode button:not(#loginPageBtn):not(#sendCommentBtn):not(#subscribeBtn):not(.action-btn) {
+    background: #333 !important;
+    color: #eee !important;
+}
+
+body.dark-mode button:hover:not(#loginPageBtn):not(#sendCommentBtn):not(#subscribeBtn):not(.action-btn) {
+    background: #444 !important;
+}
+
+body.dark-mode #notifDropdown {
+    background: #1e1e1e !important;
+    border: 1px solid #333 !important;
+    color: #eee !important;
+}
+
+body.dark-mode #notifList div {
+    border-bottom: 1px solid #333 !important;
+}
+
+body.dark-mode #notifList div:hover {
+    background: #2a2a2a !important;
 }

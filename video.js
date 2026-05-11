@@ -1,29 +1,6 @@
-const API_BASE = typeof window.API_BASE === "string" ? window.API_BASE.replace(/\/+$/, "") : "";
-const AUTH_STORAGE_KEYS = ["current_user", "currentUser"];
+// API_BASE and AUTH_STORAGE_KEYS are inherited from script.js
 
-function apiUrl(path) {
-    const p = String(path || "");
-    if (!p.startsWith("/")) return API_BASE ? `${API_BASE}/${p}` : p;
-    return API_BASE ? `${API_BASE}${p}` : p;
-}
-
-function apiFetch(path, init = {}) {
-    const headers = new Headers(init.headers || {});
-    headers.set("ngrok-skip-browser-warning", "1");
-    return fetch(apiUrl(path), { ...init, headers });
-}
-
-function loadCurrentUser() {
-    try {
-        for (const key of AUTH_STORAGE_KEYS) {
-            const raw = localStorage.getItem(key);
-            if (raw) return JSON.parse(raw);
-        }
-        return null;
-    } catch {
-        return null;
-    }
-}
+// apiUrl, apiFetch, loadCurrentUser are provided by script.js
 
 function setDetailStatus(msg, isError = false) {
     const el = document.getElementById("detailStatus");

@@ -60,7 +60,7 @@ function pickVideoDescription(v) {
     return raw ? String(raw).trim() : "";
 }
 
-function renderComments(comments) {
+function renderComments(comments, videoOwnerId) {
     const list = document.getElementById("commentList");
     if (!list) return;
     list.innerHTML = "";
@@ -68,6 +68,10 @@ function renderComments(comments) {
         list.innerHTML = "<p style='color: #666; font-size: 14px;'>Chưa có bình luận nào.</p>";
         return;
     }
+    
+    const user = loadCurrentUser();
+    const currentUid = user?.nguoi_dung_id || user?.id;
+
     for (const c of comments) {
         const row = document.createElement("div");
         row.className = "comment-item";
@@ -80,10 +84,15 @@ function renderComments(comments) {
             when = date.toLocaleDateString("vi-VN");
         }
 
+        const canDelete = currentUid && (currentUid == c.NguoiDungId || currentUid == videoOwnerId);
+
         row.innerHTML = `
             <img src="${avatar}" class="comment-avatar">
-            <div class="comment-content">
-                <div class="comment-author">${escapeHtml(who)} <span style="font-weight: normal; color: #606060; font-size: 12px; margin-left: 8px;">${when}</span></div>
+            <div class="comment-content" style="flex: 1;">
+                <div class="comment-author" style="display: flex; justify-content: space-between;">
+                    <span>${escapeHtml(who)} <span style="font-weight: normal; color: #606060; font-size: 12px; margin-left: 8px;">${when}</span></span>
+                    ${canDelete ? `<button onclick="deleteComment(${c.BinhLuanId}, event)" style="background: none; border: none; color: #999; cursor: pointer; font-size: 11px;">Xoá</button>` : ''}
+                </div>
                 <div class="comment-text">${escapeHtml(c.NoiDung || "")}</div>
             </div>
         `;
@@ -91,19 +100,53 @@ function renderComments(comments) {
     }
 }
 
-async function loadRecommendations(creatorId, currentVideoId) {
+async function deleteComment(id, event) {
+    event.stopPropagation();
+    if (!confirm("Bạn có chắc muốn xoá bình luận này?")) return;
+    const user = loadCurrentUser();
+    const uid = user?.nguoi_dung_id || user?.id;
+    try {
+        const res = await apiFetch(`/api/comments/${id}?userId=${uid}`, { method: "DELETE" });
+        const data = await parseJsonResponse(res);
+        if (data.ok) {
+            // Reload comments
+            const params = new URLSearchParams(location.search);
+            const vId = params.get("id");
+            const cRes = await apiFetch(`/api/videos/${vId}/comments`);
+            const cData = await parseJsonResponse(cRes);
+            // Cần lưu lại videoOwnerId để render lại chính xác
+            // Tạm thời reload trang cho nhanh hoặc lưu biến toàn cục
+            location.reload(); 
+        } else {
+            alert("Lỗi: " + data.error);
+        }
+    } catch (e) { alert("Lỗi khi xoá bình luận"); }
+}
+
+async function loadRecommendations(categoryId, currentVideoId) {
     const list = document.getElementById("recommendationsList");
     if (!list) return;
 
+    // Hiển thị skeleton cho đề xuất
+    list.innerHTML = Array(4).fill(0).map(() => `
+        <div class="rec-card">
+            <div class="rec-thumb-wrapper skeleton"></div>
+            <div class="rec-info">
+                <div class="skeleton skeleton-text" style="width: 80%"></div>
+                <div class="skeleton skeleton-text" style="width: 50%"></div>
+            </div>
+        </div>
+    `).join('');
+
     try {
-        const res = await apiFetch(`/api/videos?userId=${creatorId}`);
+        const res = await apiFetch(`/api/videos?categoryId=${categoryId}`);
         const data = await parseJsonResponse(res);
         if (data.ok && Array.isArray(data.videos)) {
             const filtered = data.videos.filter(v => (v.Id || v.video_id) != currentVideoId);
             list.innerHTML = "";
             
             if (filtered.length === 0) {
-                list.innerHTML = "<p style='font-size: 13px; color: #666;'>Không có video nào khác từ kênh này.</p>";
+                list.innerHTML = "<p style='font-size: 13px; color: #666;'>Không có video liên quan nào khác.</p>";
                 return;
             }
 
@@ -313,14 +356,16 @@ window.addEventListener("DOMContentLoaded", async () => {
             };
         }
 
-        loadRecommendations(creatorId, id);
+        document.getElementById("recHeader").textContent = `Video liên quan`;
+
+        loadRecommendations(v.DanhMucId, id);
         loadLikeState(id, user);
 
         // Comments
         const loadComments = async () => {
             const r = await apiFetch(`/api/videos/${id}/comments`);
             const d = await parseJsonResponse(r);
-            if (d.ok) renderComments(d.comments);
+            if (d.ok) renderComments(d.comments, creatorId);
         };
         loadComments();
 

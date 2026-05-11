@@ -600,6 +600,20 @@ window.addEventListener("DOMContentLoaded", () => {
 });
 
 async function loadVideos(categoryId = null, query = "") {
+    const container = document.getElementById("videoContainer");
+    if (container) {
+        // Hiện 8 skeleton cards
+        container.innerHTML = Array(8).fill(0).map(() => `
+            <div class="videoCard" style="box-shadow:none;">
+                <div class="skeleton-rect skeleton" style="height: 180px; border-radius: 12px;"></div>
+                <div style="padding-top: 10px;">
+                    <div class="skeleton skeleton-text" style="width: 90%; height: 20px;"></div>
+                    <div class="skeleton skeleton-text" style="width: 60%; height: 15px;"></div>
+                </div>
+            </div>
+        `).join('');
+    }
+
     try {
         let url = "/api/videos?";
         const params = new URLSearchParams();

@@ -1381,7 +1381,10 @@ app.get("/api/videos/:id", async (req, res) => {
     const videoData = videoFromRow(row);
     videoData.NguoiDungId = row.NguoiDungId;
     videoData.TenDangNhap = row.TenDangNhap;
-    
+    videoData.CategoryId = row.ForKids === 0 ? 2 : 1; // Giả định tạm nếu DB chưa trả về CategoryId rõ ràng
+    // Thực tế: Lấy CategoryId từ row nếu đã JOIN ở SQL
+    videoData.DanhMucId = row.danh_muc_id; 
+
     res.json({ ok: true, video: videoData });
   } catch (err) {
     res.status(500).json({ ok: false, error: err?.message || String(err) });
@@ -1409,6 +1412,45 @@ app.get("/api/videos/:id/comments", async (req, res) => {
     res.json({ ok: true, comments: result.recordset || [] });
   } catch (err) {
     res.status(500).json({ ok: false, error: err?.message || String(err) });
+  }
+});
+
+// API Xoá bình luận
+app.delete("/api/comments/:id", async (req, res) => {
+  try {
+    const commentId = Number(req.params.id);
+    const userId = Number(req.query.userId);
+
+    if (!commentId || !userId) return res.status(400).json({ ok: false, error: "Thiếu thông tin." });
+
+    const pool = await sql.connect(sqlConfig);
+    
+    // Kiểm tra quyền: Người viết bình luận HOẶC Chủ video
+    const check = await pool.request()
+      .input("Cid", sql.Int, commentId)
+      .query(`
+        SELECT bl.nguoi_dung_id AS CommenterId, v.nguoi_dung_id AS OwnerId, bl.video_id 
+        FROM dbo.binh_luan bl
+        JOIN dbo.video v ON bl.video_id = v.video_id
+        WHERE bl.binh_luan_id = @Cid
+      `);
+    
+    if (!check.recordset.length) return res.status(404).json({ ok: false, error: "Không tìm thấy bình luận." });
+    
+    const { CommenterId, OwnerId, video_id } = check.recordset[0];
+    
+    if (userId !== CommenterId && userId !== OwnerId) {
+      return res.status(403).json({ ok: false, error: "Bạn không có quyền xoá bình luận này." });
+    }
+
+    await pool.request().input("Cid", sql.Int, commentId).query("DELETE FROM dbo.binh_luan WHERE binh_luan_id = @Cid");
+    
+    // Cập nhật thống kê ngày
+    await updateDailyStats(pool, video_id, 'comment', -1);
+
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
   }
 });
 

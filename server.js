@@ -1789,7 +1789,15 @@ app.post("/api/videos/:id/comments", authenticateToken, async (req, res) => {
     // Track daily comment in thong_ke table
     await updateDailyStats(pool, videoId, 'comment');
 
-    const commentData = row ? { ...row, TenDangNhap: ten, AnhDaiDien: userOk.recordset?.[0]?.anh_dai_dien } : null;
+    const row = inserted.recordset?.[0];
+    const userResult = await pool.request()
+      .input("Uid", sql.Int, bodyUserId)
+      .query("SELECT ten_dang_nhap, anh_dai_dien FROM dbo.nguoi_dung WHERE nguoi_dung_id = @Uid");
+    const user = userResult.recordset?.[0];
+    const ten = user?.ten_dang_nhap || "Người dùng";
+    const avatar = user?.anh_dai_dien || null;
+
+    const commentData = row ? { ...row, TenDangNhap: ten, AnhDaiDien: avatar } : null;
     
     // Gửi thông báo real-time cho tất cả người đang xem video này
     if (commentData) {
@@ -1803,7 +1811,7 @@ app.post("/api/videos/:id/comments", authenticateToken, async (req, res) => {
     const ownerId = videoOwner.recordset?.[0]?.nguoi_dung_id;
     const vTitle = videoOwner.recordset?.[0]?.tieu_de || "video của bạn";
     if (ownerId && ownerId !== bodyUserId) {
-        const fullMsg = `${ten || "Một người dùng"} đã bình luận: "${noiDung}" (trên video: ${vTitle})`;
+        const fullMsg = `${ten} đã bình luận: "${noiDung}" (trên video: ${vTitle})`;
         addNotification(ownerId, fullMsg, `video.html?id=${videoId}`);
     }
 

@@ -18,8 +18,13 @@ function setAuthStatus(msg, isError = false) {
 }
 
 function handleLogout() {
-    for (const key of AUTH_STORAGE_KEYS) {
-        localStorage.removeItem(key);
+    if (typeof saveCurrentUser === "function") {
+        saveCurrentUser(null);
+    } else {
+        for (const key of AUTH_STORAGE_KEYS) {
+            localStorage.removeItem(key);
+        }
+        localStorage.removeItem("auth_token");
     }
     showLoggedState(null);
 }
@@ -124,7 +129,12 @@ window.addEventListener("DOMContentLoaded", () => {
                 }
 
                 if (isLoginMode) {
-                    localStorage.setItem("current_user", JSON.stringify(data.user));
+                    if (typeof saveCurrentUser === "function") {
+                        saveCurrentUser(data.user, data.token);
+                    } else {
+                        localStorage.setItem("current_user", JSON.stringify(data.user));
+                        localStorage.setItem("auth_token", data.token);
+                    }
                     setAuthStatus("Đăng nhập thành công!");
                     setTimeout(() => showLoggedState(data.user), 1000);
                 } else {
@@ -157,9 +167,8 @@ window.addEventListener("DOMContentLoaded", () => {
         formData.append("nguoi_dung_id", userId);
         
         try {
-            const res = await fetch(apiUrl("/api/auth/update-avatar"), {
+            const res = await apiFetch("/api/auth/update-avatar", {
                 method: "POST",
-                headers: { "ngrok-skip-browser-warning": "1" },
                 body: formData
             });
             const text = await res.text();
@@ -167,7 +176,11 @@ window.addEventListener("DOMContentLoaded", () => {
             try { data = JSON.parse(text); } catch { throw new Error("Server error"); }
             if (!res.ok || !data.ok) throw new Error(data.error || "Lỗi cập nhật ảnh đại diện.");
             
-            localStorage.setItem("current_user", JSON.stringify(data.user));
+            if (typeof saveCurrentUser === "function") {
+                saveCurrentUser(data.user, localStorage.getItem("auth_token"));
+            } else {
+                localStorage.setItem("current_user", JSON.stringify(data.user));
+            }
             document.getElementById("userAvatar").src = data.user.anh_dai_dien ? apiUrl(data.user.anh_dai_dien) : "https://cdn-icons-png.flaticon.com/512/149/149071.png";
             statusEl.textContent = "Cập nhật thành công!";
             statusEl.style.color = "#2ed573";
@@ -243,16 +256,19 @@ async function verifyRegistration() {
     if (!code) return alert("Vui lòng nhập mã xác nhận");
 
     try {
-        const res = await fetch(apiUrl("/api/auth/register-verify"), {
+        const res = await apiFetch("/api/auth/register-verify", {
             method: "POST",
-            headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "1" },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email, code })
         });
         const data = await res.json();
         if (data.ok) {
             alert("Đăng ký thành công!");
+            if (typeof saveCurrentUser === "function") {
+                saveCurrentUser(data.user, data.token);
+            }
             cancelRegistration();
-            document.getElementById('showLogin').click();
+            setTimeout(() => window.location.href = 'index.html', 1000);
         } else {
             alert(data.error);
         }
@@ -283,18 +299,19 @@ async function updateAge() {
     statusEl.style.color = "#666";
 
     try {
-        const res = await fetch(apiUrl("/api/auth/update-age"), {
+        const res = await apiFetch("/api/auth/update-age", {
             method: "POST",
-            headers: { 
-                "Content-Type": "application/json",
-                "ngrok-skip-browser-warning": "1" 
-            },
-            body: JSON.stringify({ nguoi_dung_id: userId, do_tuoi: age })
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ do_tuoi: age })
         });
         const data = await res.json();
         if (!res.ok || !data.ok) throw new Error(data.error || "Lỗi cập nhật tuổi.");
 
-        localStorage.setItem("current_user", JSON.stringify(data.user));
+        if (typeof saveCurrentUser === "function") {
+            saveCurrentUser(data.user, localStorage.getItem("auth_token"));
+        } else {
+            localStorage.setItem("current_user", JSON.stringify(data.user));
+        }
         showLoggedState(data.user);
         statusEl.textContent = "Cập nhật thành công!";
         statusEl.style.color = "#2ed573";
@@ -326,14 +343,10 @@ async function updateProfile() {
     }
 
     try {
-        const res = await fetch(apiUrl("/api/auth/update-profile"), {
+        const res = await apiFetch("/api/auth/update-profile", {
             method: "POST",
-            headers: { 
-                "Content-Type": "application/json",
-                "ngrok-skip-browser-warning": "1" 
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ 
-                nguoi_dung_id: userId, 
                 ten_dang_nhap: username, 
                 email: email 
             })
@@ -341,7 +354,11 @@ async function updateProfile() {
         const data = await res.json();
         if (!res.ok || !data.ok) throw new Error(data.error || "Lỗi cập nhật thông tin.");
 
-        localStorage.setItem("current_user", JSON.stringify(data.user));
+        if (typeof saveCurrentUser === "function") {
+            saveCurrentUser(data.user, localStorage.getItem("auth_token"));
+        } else {
+            localStorage.setItem("current_user", JSON.stringify(data.user));
+        }
         if (typeof showLoggedState === "function") showLoggedState(data.user);
         
         if (statusEl) {

@@ -71,8 +71,14 @@ function apiUrl(path) {
 function apiFetch(path, init = {}) {
     const headers = new Headers(init.headers || {});
     // Needed for ngrok free: skip the browser warning interstitial.
-    // Triggers CORS preflight; backend must allow it.
     headers.set("ngrok-skip-browser-warning", "1");
+    
+    // Thêm token vào Header nếu có
+    const token = localStorage.getItem("auth_token");
+    if (token) {
+        headers.set("Authorization", `Bearer ${token}`);
+    }
+
     return fetch(apiUrl(path), { ...init, headers });
 }
 
@@ -90,14 +96,16 @@ function setAuthStatus(msg, isError = false) {
     el.style.color = isError ? "#b00020" : "#1b5e20";
 }
 
-function saveCurrentUser(user) {
+function saveCurrentUser(user, token) {
     currentUser = user || null;
     if (!currentUser) {
         AUTH_STORAGE_KEYS.forEach((key) => localStorage.removeItem(key));
+        localStorage.removeItem("auth_token");
         return;
     }
     const value = JSON.stringify(currentUser);
     AUTH_STORAGE_KEYS.forEach((key) => localStorage.setItem(key, value));
+    if (token) localStorage.setItem("auth_token", token);
 }
 
 function loadCurrentUser() {
@@ -225,12 +233,11 @@ async function loadNotifications() {
 
 async function markAllNotifsRead() {
     if (!currentUser) return;
-    const uid = currentUser.nguoi_dung_id || currentUser.id || currentUser.ma_nguoi_dung;
     try {
         const res = await apiFetch("/api/notifications/mark-read", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ userId: uid })
+            body: JSON.stringify({ userId: currentUser.nguoi_dung_id }) // Backend vẫn có thể dùng body hoặc token
         });
         const data = await res.json();
         if (data.ok) loadNotifications();
@@ -685,7 +692,7 @@ function initHistoryPage() {
             if (!currentUser) return;
             if (!confirm("Bạn có chắc chắn muốn xoá toàn bộ lịch sử xem?")) return;
             try {
-                const uid = currentUser.nguoi_dung_id || currentUser.id || currentUser.ma_nguoi_dung;
+                const uid = currentUser.nguoi_dung_id;
                 const res = await apiFetch(`/api/history/watch/${uid}`, { method: "DELETE" });
                 const data = await res.json();
                 if (data.ok) loadWatchHistory();
@@ -787,7 +794,7 @@ function renderWatchHistoryRow(v) {
     deleteBtn.style.color = "#666";
     deleteBtn.onclick = async (e) => {
         e.stopPropagation();
-        const uid = currentUser.nguoi_dung_id || currentUser.id || currentUser.ma_nguoi_dung;
+        const uid = currentUser.nguoi_dung_id;
         const res = await apiFetch(`/api/history/watch/${uid}?videoId=${id}`, { method: "DELETE" });
         const data = await res.json();
         if (data.ok) loadWatchHistory();
@@ -799,9 +806,30 @@ function renderWatchHistoryRow(v) {
     row.appendChild(timeCell);
     row.appendChild(actionsCell);
 
-    row.onclick = () => window.location.href = `video.html?id=${id}`;
+    row.addEventListener("click", () => {
+        if (id != null) window.location.href = `video.html?id=${encodeURIComponent(String(id))}`;
+    });
 
     return row;
+}
+
+async function deleteVideo(id) {
+    if (!currentUser) return;
+    try {
+        const res = await apiFetch(`/api/videos/${id}`, {
+            method: "DELETE"
+        });
+        const data = await res.json();
+        if (data.ok) {
+            alert("Đã xoá video thành công!");
+            if (typeof loadHistoryVideos === "function") loadHistoryVideos();
+        } else {
+            alert("Lỗi: " + data.error);
+        }
+    } catch (err) {
+        console.error(err);
+        alert("Không thể kết nối Server để xoá video.");
+    }
 }
 
 async function loadVideos(categoryId = null, query = "") {
@@ -1086,7 +1114,6 @@ async function uploadVideo() {
     if (categoryVal) form.append("categoryId", categoryVal);
     form.append("forKids", forKids);
     form.append("thoi_luong", String(durationSeconds));
-    form.append("nguoi_dung_id", String(currentUser.nguoi_dung_id));
     form.append("video", file);
 
     // Chuẩn bị UI
@@ -1101,6 +1128,10 @@ async function uploadVideo() {
     
     xhr.open("POST", uploadUrl, true);
     xhr.setRequestHeader("ngrok-skip-browser-warning", "1");
+    const token = localStorage.getItem("auth_token");
+    if (token) {
+        xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+    }
 
     xhr.upload.onprogress = (e) => {
         if (e.lengthComputable) {

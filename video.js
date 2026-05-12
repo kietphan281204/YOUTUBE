@@ -89,7 +89,7 @@ async function deleteComment(id, event) {
     if (!uid) return alert("Lỗi: Không xác định được người dùng. Vui lòng đăng nhập lại.");
 
     try {
-        const res = await apiFetch(`/api/comments/${id}?userId=${uid}`, { method: "DELETE" });
+        const res = await apiFetch(`/api/comments/${id}`, { method: "DELETE" });
         const data = await parseJsonResponse(res);
         if (data.ok) {
             location.reload(); 
@@ -317,7 +317,7 @@ window.addEventListener("DOMContentLoaded", async () => {
                     const r = await apiFetch("/api/subscribe", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ subscriberId: user.nguoi_dung_id, channelId: creatorId })
+                        body: JSON.stringify({ channelId: creatorId })
                     });
                     const d = await parseJsonResponse(r);
                     if (d.ok) {
@@ -352,7 +352,7 @@ window.addEventListener("DOMContentLoaded", async () => {
             const r = await apiFetch(`/api/videos/${id}/comments`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ noi_dung: txt, nguoi_dung_id: user.nguoi_dung_id }),
+                body: JSON.stringify({ noi_dung: txt }),
             });
             const d = await parseJsonResponse(r);
             if (d.ok) {
@@ -366,7 +366,6 @@ window.addEventListener("DOMContentLoaded", async () => {
             const r = await apiFetch(`/api/videos/${id}/likes/toggle`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ nguoi_dung_id: user.nguoi_dung_id }),
             });
             const d = await parseJsonResponse(r);
             if (d.ok) loadLikeState(id, user);
@@ -423,7 +422,7 @@ window.addEventListener("DOMContentLoaded", async () => {
                 const res = await apiFetch("/api/history/watch", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ userId: uid, videoId: vid })
+                    body: JSON.stringify({ videoId: vid })
                 });
                 const result = await res.json();
                 if (!result.ok) console.warn("[History] Save failed:", result.error);

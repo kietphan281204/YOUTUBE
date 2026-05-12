@@ -8,6 +8,7 @@ const multer = require("multer");
 const sql = require("mssql");
 const crypto = require("crypto");
 const { execFile } = require("child_process");
+const jwt = require("jsonwebtoken");
 
 const nodemailer = require("nodemailer");
 require("dotenv").config();
@@ -281,6 +282,46 @@ async function addNotification(userId, content, link = null) {
   } catch (err) {
     console.error("[Notify] Error:", err.message);
   }
+}
+
+// Middleware xác thực JWT
+function authenticateToken(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+
+  if (!token) {
+    return res.status(401).json({ ok: false, error: "Bạn chưa đăng nhập (Thiếu token)." });
+  }
+
+  jwt.verify(token, process.env.JWT_SECRET || "default_secret", (err, user) => {
+    if (err) {
+      return res.status(403).json({ ok: false, error: "Phiên đăng nhập hết hạn hoặc không hợp lệ." });
+    }
+    req.user = user;
+    next();
+  });
+}
+
+function generateToken(user) {
+  const payload = {
+    nguoi_dung_id: user.nguoi_dung_id,
+    ten_dang_nhap: user.ten_dang_nhap,
+    email: user.email
+  };
+  return jwt.sign(payload, process.env.JWT_SECRET || "default_secret", { expiresIn: '7d' });
+}
+
+function optionalAuthenticateToken(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) return next();
+
+  jwt.verify(token, process.env.JWT_SECRET || "default_secret", (err, user) => {
+    if (err) return next();
+    req.user = user;
+    next();
+  });
 }
 
 function mapNguoiDungRow(row) {
@@ -597,7 +638,9 @@ app.post("/api/auth/register-verify", async (req, res) => {
       `);
 
     registrationRequests.delete(email);
-    res.json({ ok: true, user: mapNguoiDungRow(inserted.recordset[0]) });
+    const user = mapNguoiDungRow(inserted.recordset[0]);
+    const token = generateToken(user);
+    res.json({ ok: true, user, token });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
@@ -633,7 +676,9 @@ app.post("/api/auth/login", async (req, res) => {
       return res.status(401).json({ ok: false, error: "Sai tài khoản hoặc mật khẩu." });
     }
 
-    return res.json({ ok: true, user: mapNguoiDungRow(user) });
+    const userOut = mapNguoiDungRow(user);
+    const token = generateToken(userOut);
+    return res.json({ ok: true, user: userOut, token });
   } catch (err) {
     return res.status(500).json({ ok: false, error: err?.message || String(err) });
   }
@@ -707,9 +752,9 @@ app.post("/api/auth/reset-password", async (req, res) => {
 });
 
 
-app.post("/api/auth/update-avatar", upload.single("avatar"), async (req, res) => {
+app.post("/api/auth/update-avatar", authenticateToken, upload.single("avatar"), async (req, res) => {
   try {
-    const userId = Number(req.body?.nguoi_dung_id);
+    const userId = req.user.nguoi_dung_id;
     if (!Number.isFinite(userId) || userId <= 0) {
       return res.status(400).json({ ok: false, error: "ID người dùng không hợp lệ." });
     }
@@ -734,9 +779,9 @@ app.post("/api/auth/update-avatar", upload.single("avatar"), async (req, res) =>
   }
 });
 
-app.get("/api/notifications/:userId", async (req, res) => {
+app.get("/api/notifications/:userId", authenticateToken, async (req, res) => {
   try {
-    const userId = Number(req.params.userId);
+    const userId = req.user.nguoi_dung_id;
     const pool = await sql.connect(sqlConfig);
     const result = await pool.request()
       .input("Uid", sql.Int, userId)
@@ -747,9 +792,9 @@ app.get("/api/notifications/:userId", async (req, res) => {
   }
 });
 
-app.post("/api/notifications/mark-read", async (req, res) => {
+app.post("/api/notifications/mark-read", authenticateToken, async (req, res) => {
   try {
-    const userId = Number(req.body.userId);
+    const userId = req.user.nguoi_dung_id;
     const pool = await sql.connect(sqlConfig);
     await pool.request()
       .input("Uid", sql.Int, userId)
@@ -760,9 +805,9 @@ app.post("/api/notifications/mark-read", async (req, res) => {
   }
 });
 
-app.post("/api/auth/update-age", async (req, res) => {
+app.post("/api/auth/update-age", authenticateToken, async (req, res) => {
   try {
-    const userId = Number(req.body.nguoi_dung_id);
+    const userId = req.user.nguoi_dung_id;
     const newAge = String(req.body.do_tuoi || "").trim().slice(0, 50);
 
     if (!Number.isFinite(userId) || userId <= 0 || !newAge) {
@@ -790,9 +835,9 @@ app.post("/api/auth/update-age", async (req, res) => {
   }
 });
 
-app.post("/api/auth/update-profile", async (req, res) => {
+app.post("/api/auth/update-profile", authenticateToken, async (req, res) => {
   try {
-    const userId = Number(req.body.nguoi_dung_id);
+    const userId = req.user.nguoi_dung_id;
     const username = String(req.body.ten_dang_nhap || "").trim();
     const email = String(req.body.email || "").trim();
 
@@ -825,9 +870,9 @@ app.post("/api/auth/update-profile", async (req, res) => {
   }
 });
 
-app.post("/api/subscribe", async (req, res) => {
+app.post("/api/subscribe", authenticateToken, async (req, res) => {
   try {
-    const subscriberId = Number(req.body.subscriberId);
+    const subscriberId = req.user.nguoi_dung_id;
     const channelId = Number(req.body.channelId);
 
     if (!subscriberId || !channelId || subscriberId === channelId) {
@@ -866,9 +911,9 @@ app.post("/api/subscribe", async (req, res) => {
   }
 });
 
-app.get("/api/subscribe/status", async (req, res) => {
+app.get("/api/subscribe/status", optionalAuthenticateToken, async (req, res) => {
   try {
-    const subscriberId = Number(req.query.subscriberId);
+    const subscriberId = req.user?.nguoi_dung_id || Number(req.query.subscriberId);
     const channelId = Number(req.query.channelId);
     if (!channelId) return res.status(400).json({ ok: false, error: "Thiếu ID kênh" });
 
@@ -1001,7 +1046,7 @@ app.post("/api/tags", async (req, res) => {
   }
 });
 
-app.get("/api/videos", async (req, res) => {
+app.get("/api/videos", optionalAuthenticateToken, async (req, res) => {
   try {
     const catId = Number(req.query.categoryId);
     const searchQuery = String(req.query.q || "").trim();
@@ -1009,7 +1054,7 @@ app.get("/api/videos", async (req, res) => {
 
     // Lấy tuổi của người đang xem để lọc video
     let viewerAge = 0; // Mặc định là trẻ em nếu chưa đăng nhập
-    const viewerId = Number(req.query?.nguoi_dung_id);
+    const viewerId = req.user?.nguoi_dung_id || Number(req.query?.nguoi_dung_id);
     if (Number.isFinite(viewerId) && viewerId > 0) {
       const uRes = await pool.request().input("ViewerId", sql.Int, viewerId).query("SELECT do_tuoi FROM dbo.nguoi_dung WHERE nguoi_dung_id = @ViewerId");
       const ageStr = uRes.recordset?.[0]?.do_tuoi;
@@ -1079,9 +1124,9 @@ app.get("/api/videos", async (req, res) => {
   }
 });
 
-app.get("/api/videos/history/:userId", async (req, res) => {
+app.get("/api/videos/history/:userId", authenticateToken, async (req, res) => {
   try {
-    const userId = Number(req.params.userId);
+    const userId = req.user.nguoi_dung_id;
     if (!Number.isFinite(userId) || userId <= 0) {
       return res.status(400).json({ ok: false, error: "ID người dùng không hợp lệ." });
     }
@@ -1116,9 +1161,9 @@ app.get("/api/videos/history/:userId", async (req, res) => {
 });
 
 // API Lấy lịch sử xem (Watch History)
-app.get("/api/history/watch/:userId", async (req, res) => {
+app.get("/api/history/watch/:userId", authenticateToken, async (req, res) => {
   try {
-    const userId = Number(req.params.userId);
+    const userId = req.user.nguoi_dung_id;
     if (!userId) return res.status(400).json({ ok: false, error: "Thiếu ID người dùng" });
 
     const pool = await sql.connect(sqlConfig);
@@ -1150,9 +1195,9 @@ app.get("/api/history/watch/:userId", async (req, res) => {
 });
 
 // API Xoá lịch sử xem
-app.delete("/api/history/watch/:userId", async (req, res) => {
+app.delete("/api/history/watch/:userId", authenticateToken, async (req, res) => {
   try {
-    const userId = Number(req.params.userId);
+    const userId = req.user.nguoi_dung_id;
     const videoId = Number(req.query.videoId); // Nếu có videoId thì xoá 1, không thì xoá hết
 
     const pool = await sql.connect(sqlConfig);
@@ -1172,9 +1217,10 @@ app.delete("/api/history/watch/:userId", async (req, res) => {
 });
 
 // API Thêm vào lịch sử xem (Thường gọi ngầm khi xem video)
-app.post("/api/history/watch", async (req, res) => {
+app.post("/api/history/watch", authenticateToken, async (req, res) => {
   try {
-    const { userId, videoId } = req.body;
+    const userId = req.user.nguoi_dung_id;
+    const { videoId } = req.body;
     if (!userId || !videoId) return res.status(400).json({ ok: false, error: "Thiếu thông tin" });
 
     const pool = await sql.connect(sqlConfig);
@@ -1198,18 +1244,18 @@ app.post("/api/history/watch", async (req, res) => {
  */
 async function fetchTrendingVideos(req) {
   const pool = await sql.connect(sqlConfig);
-    const viewerId = Number(req.query?.nguoi_dung_id);
-    let viewerAge = 0;
-    if (Number.isFinite(viewerId) && viewerId > 0) {
-      const uRes = await pool.request().input("ViewerId", sql.Int, viewerId).query("SELECT do_tuoi FROM dbo.nguoi_dung WHERE nguoi_dung_id = @ViewerId");
-      const ageStr = uRes.recordset?.[0]?.do_tuoi;
-      viewerAge = parseInt(ageStr) || 0;
-    }
+  const viewerId = req.user?.nguoi_dung_id || Number(req.query?.nguoi_dung_id);
+  let viewerAge = 0;
+  if (Number.isFinite(viewerId) && viewerId > 0) {
+    const uRes = await pool.request().input("ViewerId", sql.Int, viewerId).query("SELECT do_tuoi FROM dbo.nguoi_dung WHERE nguoi_dung_id = @ViewerId");
+    const ageStr = uRes.recordset?.[0]?.do_tuoi;
+    viewerAge = parseInt(ageStr) || 0;
+  }
 
-    const result = await pool
-      .request()
-      .input("ViewerAge", sql.Int, viewerAge)
-      .input("ViewerId", sql.Int, viewerId || 0)
+  const result = await pool
+    .request()
+    .input("ViewerAge", sql.Int, viewerAge)
+    .input("ViewerId", sql.Int, viewerId || 0)
       .query(
         "SELECT TOP (50) " +
           "v.video_id AS Id, v.tieu_de AS Title, v.mo_ta AS Description, v.duong_dan_video AS RelativeUrl, " +
@@ -1236,7 +1282,7 @@ async function fetchTrendingVideos(req) {
   return { rows };
 }
 
-app.get("/api/videos/trending", async (req, res) => {
+app.get("/api/videos/trending", optionalAuthenticateToken, async (req, res) => {
   try {
     const { rows } = await fetchTrendingVideos(req);
     res.json({ ok: true, videos: rows });
@@ -1245,7 +1291,7 @@ app.get("/api/videos/trending", async (req, res) => {
   }
 });
 
-app.get("/api/videos/:id", async (req, res) => {
+app.get("/api/videos/:id", optionalAuthenticateToken, async (req, res) => {
   if (String(req.params.id).toLowerCase() === "trending") {
     try {
       const { rows } = await fetchTrendingVideos(req);
@@ -1282,7 +1328,7 @@ app.get("/api/videos/:id", async (req, res) => {
 
       // Nếu dbo.nguoi_xem có cột nguoi_dung_id NOT NULL, ta phải điền giá trị.
       // Ưu tiên lấy nguoi_dung_id từ query (nếu frontend gửi), sau đó mới fallback env/first user.
-      const nguoiDungIdFromReq = Number(req.query?.nguoi_dung_id);
+      const nguoiDungIdFromReq = req.user?.nguoi_dung_id || Number(req.query?.nguoi_dung_id);
       const defaultEnvId = Number(process.env.DEFAULT_NGUOI_DUNG_ID);
       let viewerNguoiDungId = NaN;
       let tenNguoiXem = tenNguoiXemDefault;
@@ -1554,10 +1600,10 @@ app.get("/api/videos/:id/comments", async (req, res) => {
 });
 
 // API Xoá bình luận
-app.delete("/api/comments/:id", async (req, res) => {
+app.delete("/api/comments/:id", authenticateToken, async (req, res) => {
   try {
     const commentId = Number(req.params.id);
-    const userId = Number(req.query.userId);
+    const userId = req.user.nguoi_dung_id;
 
     if (!commentId || !userId) return res.status(400).json({ ok: false, error: "Thiếu thông tin." });
 
@@ -1592,15 +1638,32 @@ app.delete("/api/comments/:id", async (req, res) => {
   }
 });
 
-app.put("/api/videos/:id", async (req, res) => {
+app.put("/api/videos/:id", authenticateToken, async (req, res) => {
   try {
     const id = Number(req.params.id);
+    const userId = req.user.nguoi_dung_id;
+
     if (!Number.isFinite(id) || id <= 0) {
       return res.status(400).json({ ok: false, error: "ID video không hợp lệ." });
     }
-    const { title, description, categoryId } = req.body;
     
     const pool = await sql.connect(sqlConfig);
+
+    // Kiểm tra quyền sở hữu trước khi cho phép cập nhật
+    const check = await pool.request()
+      .input("Vid", sql.Int, id)
+      .query("SELECT nguoi_dung_id FROM dbo.video WHERE video_id = @Vid");
+    
+    if (!check.recordset?.length) {
+      return res.status(404).json({ ok: false, error: "Không tìm thấy video." });
+    }
+    
+    if (check.recordset[0].nguoi_dung_id !== userId) {
+      return res.status(403).json({ ok: false, error: "Bạn không có quyền chỉnh sửa video này!" });
+    }
+
+    const { title, description, categoryId } = req.body;
+    
     const result = await pool.request()
       .input("Title", sql.NVarChar(255), title || "")
       .input("Desc", sql.NVarChar(sql.MAX), description || "")
@@ -1617,10 +1680,10 @@ app.put("/api/videos/:id", async (req, res) => {
   }
 });
 
-app.delete("/api/videos/:id", async (req, res) => {
+app.delete("/api/videos/:id", authenticateToken, async (req, res) => {
   try {
     const id = Number(req.params.id);
-    const userId = Number(req.query.userId);
+    const userId = req.user.nguoi_dung_id;
 
     if (!Number.isFinite(id) || id <= 0) {
       return res.status(400).json({ ok: false, error: "ID video không hợp lệ." });
@@ -1656,7 +1719,7 @@ app.delete("/api/videos/:id", async (req, res) => {
   }
 });
 
-app.post("/api/videos/:id/comments", async (req, res) => {
+app.post("/api/videos/:id/comments", authenticateToken, async (req, res) => {
   try {
     const videoId = Number(req.params.id);
     if (!Number.isFinite(videoId) || videoId <= 0) {
@@ -1666,7 +1729,7 @@ app.post("/api/videos/:id/comments", async (req, res) => {
     if (!noiDung) {
       return res.status(400).json({ ok: false, error: "Nội dung bình luận không được để trống." });
     }
-    const bodyUserId = Number(req.body?.nguoi_dung_id);
+    const bodyUserId = req.user.nguoi_dung_id;
     if (!Number.isFinite(bodyUserId) || bodyUserId <= 0) {
       return res.status(401).json({ ok: false, error: "Cần đăng nhập để bình luận (thiếu nguoi_dung_id)." });
     }
@@ -1733,10 +1796,10 @@ app.post("/api/videos/:id/comments", async (req, res) => {
 // Like / Unlike video
 // GET  /api/videos/:id/likes?nguoi_dung_id=...
 // POST /api/videos/:id/likes/toggle  { nguoi_dung_id: number }
-app.get("/api/videos/:id/likes", async (req, res) => {
+app.get("/api/videos/:id/likes", optionalAuthenticateToken, async (req, res) => {
   try {
     const videoId = Number(req.params.id);
-    const userId = Number(req.query?.nguoi_dung_id);
+    const userId = req.user?.nguoi_dung_id || Number(req.query?.nguoi_dung_id);
 
     if (!Number.isFinite(videoId) || videoId <= 0) {
       return res.status(400).json({ ok: false, error: "ID video không hợp lệ." });
@@ -1771,10 +1834,10 @@ app.get("/api/videos/:id/likes", async (req, res) => {
   }
 });
 
-app.post("/api/videos/:id/likes/toggle", async (req, res) => {
+app.post("/api/videos/:id/likes/toggle", authenticateToken, async (req, res) => {
   try {
     const videoId = Number(req.params.id);
-    const userId = Number(req.body?.nguoi_dung_id);
+    const userId = req.user.nguoi_dung_id;
 
     if (!Number.isFinite(videoId) || videoId <= 0) {
       return res.status(400).json({ ok: false, error: "ID video không hợp lệ." });
@@ -1913,9 +1976,9 @@ async function updateDailyStats(pool, videoId, type, increment = 1) {
 /**
  * Statistics endpoint: Returns aggregated stats for user's videos
  */
-app.get("/api/stats/:userId", async (req, res) => {
+app.get("/api/stats/:userId", authenticateToken, async (req, res) => {
   try {
-    const userId = Number(req.params.userId);
+    const userId = req.user.nguoi_dung_id;
     console.log("[stats] Loading stats for userId:", userId);
     if (!Number.isFinite(userId) || userId <= 0) {
       console.warn("[stats] Invalid userId:", req.params.userId);
@@ -2048,8 +2111,9 @@ async function videoColumnsHandler(_req, res) {
 app.get("/api/db/video-columns", videoColumnsHandler);
 app.get("/api/video-columns", videoColumnsHandler);
 
-app.post("/api/videos", upload.single("video"), async (req, res) => {
+app.post("/api/videos", authenticateToken, upload.single("video"), async (req, res) => {
   try {
+    const ownerId = req.user.nguoi_dung_id;
     const { title, moTa: description } = readUploadMeta(req);
     // eslint-disable-next-line no-console
     console.log("[upload]", {
@@ -2084,20 +2148,9 @@ app.post("/api/videos", upload.single("video"), async (req, res) => {
       });
     }
 
-    const bodyNguoiDungId = Number(
-      getMultipartField(req.body, ["nguoi_dung_id", "Nguoi_dung_id", "nguoiDungId"])
-    );
-    const wantId = Number.isFinite(bodyNguoiDungId) && bodyNguoiDungId > 0
-      ? bodyNguoiDungId
-      : Number(process.env.DEFAULT_NGUOI_DUNG_ID);
-    let ownerId = fallbackId;
-    if (Number.isFinite(wantId) && wantId > 0) {
-      const exists = await pool
-        .request()
-        .input("CheckId", sql.Int, wantId)
-        .query("SELECT 1 AS ok FROM dbo.nguoi_dung WHERE nguoi_dung_id = @CheckId");
-      if (exists.recordset?.length) ownerId = wantId;
-    }
+    // Giữ nguyên ownerId từ token, bỏ qua logic ghi đè từ body nếu không cần thiết
+    // (Hoặc có thể cập nhật ownerId = wantId nếu wantId hợp lệ và người dùng có quyền admin)
+    // Ở đây ta ưu tiên ownerId từ token đã xác thực ở dòng 2117.
 
     const danhMucIdRaw = getMultipartField(req.body, ["danh_muc_id", "categoryId"]);
     const danhMucId = (Number.isFinite(Number(danhMucIdRaw)) && Number(danhMucIdRaw) > 0) ? Number(danhMucIdRaw) : null;

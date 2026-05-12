@@ -904,6 +904,12 @@ app.post("/api/subscribe", authenticateToken, async (req, res) => {
         .input("Sid", sql.Int, subscriberId)
         .input("Cid", sql.Int, channelId)
         .query("DELETE FROM dbo.dang_ky_kenh WHERE nguoi_dung_id = @Sid AND kenh_id = @Cid");
+      
+      const countRes = await pool.request()
+        .input("Cid", sql.Int, channelId)
+        .query("SELECT COUNT(*) AS total FROM dbo.dang_ky_kenh WHERE kenh_id = @Cid");
+      io.emit("updateSubscribers", { channelId, count: countRes.recordset[0].total });
+
       return res.json({ ok: true, subscribed: false });
     } else {
       await pool.request()
@@ -917,6 +923,11 @@ app.post("/api/subscribe", authenticateToken, async (req, res) => {
         .query("SELECT ten_dang_nhap FROM dbo.nguoi_dung WHERE nguoi_dung_id = @Sid");
       const subName = subInfo.recordset?.[0]?.ten_dang_nhap || "Một người dùng";
       addNotification(channelId, `${subName} đã đăng ký kênh của bạn!`, `user.html?id=${subscriberId}`);
+
+      const countRes = await pool.request()
+        .input("Cid", sql.Int, channelId)
+        .query("SELECT COUNT(*) AS total FROM dbo.dang_ky_kenh WHERE kenh_id = @Cid");
+      io.emit("updateSubscribers", { channelId, count: countRes.recordset[0].total });
 
       return res.json({ ok: true, subscribed: true });
     }

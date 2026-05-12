@@ -497,6 +497,17 @@ window.addEventListener("DOMContentLoaded", async () => {
                 }
             });
 
+            // Nghe cập nhật số người đăng ký
+            socket.on("updateSubscribers", (data) => {
+                // creatorId được định nghĩa ở dòng 243
+                if (Number(data.channelId) === Number(creatorId)) {
+                    const subCountEl = document.getElementById("subCount");
+                    if (subCountEl) {
+                        subCountEl.textContent = `${data.count} người đăng ký`;
+                    }
+                }
+            });
+
             // Rời phòng khi chuyển trang
             window.addEventListener("beforeunload", () => {
                 socket.emit("leaveVideo", id);

@@ -1938,6 +1938,11 @@ app.post("/api/videos/:id/likes/toggle", authenticateToken, async (req, res) => 
       }
     }
 
+    const cnt = await pool
+      .request()
+      .input("Vid", sql.Int, Math.trunc(videoId))
+      .query("SELECT COUNT(*) AS n FROM dbo.luot_thich WHERE video_id = @Vid");
+
     const finalCnt = Number(cnt.recordset?.[0]?.n ?? 0);
 
     // Phát tín hiệu cập nhật Like real-time

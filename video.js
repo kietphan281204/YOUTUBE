@@ -373,7 +373,7 @@ window.addEventListener("DOMContentLoaded", async () => {
             const d = await parseJsonResponse(r);
             if (d.ok) {
                 document.getElementById("commentInput").value = "";
-                // loadComments(); // KHÔNG CẦN TẢI LẠI, Socket sẽ tự push
+                loadComments(); // Tải lại danh sách ngay lập tức để chắc chắn
                 if (typeof cancelComment === "function") cancelComment();
             } else {
                 alert("Lỗi bình luận: " + (d.error || "Không rõ nguyên nhân"));
@@ -385,12 +385,21 @@ window.addEventListener("DOMContentLoaded", async () => {
 
         document.getElementById("likeBtn").onclick = async () => {
             if (!user) return alert("Đăng nhập để like!");
-            const r = await apiFetch(`/api/videos/${id}/likes/toggle`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-            });
-            const d = await parseJsonResponse(r);
-            if (d.ok) loadLikeState(id, user);
+            try {
+                const r = await apiFetch(`/api/videos/${id}/likes/toggle`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                });
+                const d = await parseJsonResponse(r);
+                if (d.ok) {
+                    loadLikeState(id, user); // Tải lại trạng thái Like ngay lập tức
+                } else {
+                    alert("Lỗi Like: " + (d.error || "Không rõ"));
+                }
+            } catch (e) {
+                console.error("Lỗi Like:", e);
+                alert("Không thể thực hiện Like lúc này.");
+            }
         };
 
         // Autoplay Logic

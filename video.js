@@ -37,15 +37,7 @@ function pickVideoDescription(v) {
     return raw ? String(raw).trim() : "";
 }
 
-function addSingleCommentToUI(c, videoOwnerId) {
-    const list = document.getElementById("commentList");
-    if (!list) return;
-    
-    // Nếu đang hiện thông báo "Chưa có bình luận", xóa nó đi
-    if (list.querySelector("p")) {
-        list.innerHTML = "";
-    }
-
+function createCommentElement(c, videoOwnerId) {
     const user = loadCurrentUser();
     const currentUid = user?.nguoi_dung_id || user?.id;
 
@@ -74,7 +66,19 @@ function addSingleCommentToUI(c, videoOwnerId) {
             <div class="comment-text">${escapeHtml(c.NoiDung || c.noi_dung || "")}</div>
         </div>
     `;
-    // Thêm vào đầu danh sách (mới nhất lên trên)
+    return row;
+}
+
+function addSingleCommentToUI(c, videoOwnerId) {
+    const list = document.getElementById("commentList");
+    if (!list) return;
+    
+    if (list.querySelector("p")) {
+        list.innerHTML = "";
+    }
+
+    const row = createCommentElement(c, videoOwnerId);
+    // Bình luận mới nhất (real-time) luôn đưa lên trên cùng
     list.insertBefore(row, list.firstChild);
 }
 
@@ -87,11 +91,12 @@ function renderComments(comments, videoOwnerId) {
         return;
     }
     
-    // Đảo ngược để hiện cái mới lên đầu nếu backend trả về cũ trước
+    // Sắp xếp: Mới nhất lên đầu
     const sorted = [...comments].sort((a, b) => new Date(b.NgayTao || b.ngay_tao) - new Date(a.NgayTao || a.ngay_tao));
 
     for (const c of sorted) {
-        addSingleCommentToUI(c, videoOwnerId);
+        const row = createCommentElement(c, videoOwnerId);
+        list.appendChild(row); // Vì đã sort Mới -> Cũ nên dùng appendChild
     }
 }
 
@@ -499,8 +504,9 @@ window.addEventListener("DOMContentLoaded", async () => {
 
             // Nghe cập nhật số người đăng ký
             socket.on("updateSubscribers", (data) => {
-                // creatorId được định nghĩa ở dòng 243
-                if (Number(data.channelId) === Number(creatorId)) {
+                const currentCreatorId = Number(creatorId);
+                if (Number(data.channelId) === currentCreatorId) {
+                    console.log(`[Realtime] Channel ${currentCreatorId} subscribers updated: ${data.count}`);
                     const subCountEl = document.getElementById("subCount");
                     if (subCountEl) {
                         subCountEl.textContent = `${data.count} người đăng ký`;
@@ -515,6 +521,7 @@ window.addEventListener("DOMContentLoaded", async () => {
         }
 
     } catch (e) {
+        console.error("Lỗi khởi tạo trang video:", e);
         setDetailStatus("Lỗi: " + e.message, true);
     }
 });

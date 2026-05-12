@@ -110,6 +110,9 @@ function saveCurrentUser(user, token) {
 
 function loadCurrentUser() {
     try {
+        const token = localStorage.getItem("auth_token");
+        if (!token) return null; // Bắt buộc phải có token mới coi là đã đăng nhập
+
         for (const key of AUTH_STORAGE_KEYS) {
             const raw = localStorage.getItem(key);
             if (raw) return JSON.parse(raw);

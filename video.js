@@ -37,6 +37,47 @@ function pickVideoDescription(v) {
     return raw ? String(raw).trim() : "";
 }
 
+function addSingleCommentToUI(c, videoOwnerId) {
+    const list = document.getElementById("commentList");
+    if (!list) return;
+    
+    // Nếu đang hiện thông báo "Chưa có bình luận", xóa nó đi
+    if (list.querySelector("p")) {
+        list.innerHTML = "";
+    }
+
+    const user = loadCurrentUser();
+    const currentUid = user?.nguoi_dung_id || user?.id;
+
+    const row = document.createElement("div");
+    row.className = "comment-item";
+    const who = c.TenDangNhap || "Người dùng";
+    const avatar = c.AnhDaiDien || c.anh_dai_dien ? apiUrl(c.AnhDaiDien || c.anh_dai_dien) : "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+    
+    let when = "";
+    if (c.NgayTao || c.ngay_tao) {
+        const date = new Date(c.NgayTao || c.ngay_tao);
+        when = date.toLocaleDateString("vi-VN");
+    }
+
+    const cId = c.Id || c.BinhLuanId || c.binh_luan_id || c.id;
+    const cOwnerId = c.NguoiDungId || c.nguoi_dung_id;
+    const canDelete = currentUid && (currentUid == cOwnerId || currentUid == videoOwnerId);
+
+    row.innerHTML = `
+        <img src="${avatar}" class="comment-avatar">
+        <div class="comment-content" style="flex: 1;">
+            <div class="comment-author" style="display: flex; justify-content: space-between;">
+                <span>${escapeHtml(who)} <span style="font-weight: normal; color: #606060; font-size: 12px; margin-left: 8px;">${when}</span></span>
+                ${canDelete ? `<button onclick="deleteComment(${cId}, event)" style="background: none; border: none; color: #999; cursor: pointer; font-size: 11px;">Xoá</button>` : ''}
+            </div>
+            <div class="comment-text">${escapeHtml(c.NoiDung || c.noi_dung || "")}</div>
+        </div>
+    `;
+    // Thêm vào đầu danh sách (mới nhất lên trên)
+    list.insertBefore(row, list.firstChild);
+}
+
 function renderComments(comments, videoOwnerId) {
     const list = document.getElementById("commentList");
     if (!list) return;
@@ -46,36 +87,11 @@ function renderComments(comments, videoOwnerId) {
         return;
     }
     
-    const user = loadCurrentUser();
-    const currentUid = user?.nguoi_dung_id || user?.id;
+    // Đảo ngược để hiện cái mới lên đầu nếu backend trả về cũ trước
+    const sorted = [...comments].sort((a, b) => new Date(b.NgayTao || b.ngay_tao) - new Date(a.NgayTao || a.ngay_tao));
 
-    for (const c of comments) {
-        const row = document.createElement("div");
-        row.className = "comment-item";
-        const who = c.TenDangNhap || "Người dùng";
-        const avatar = c.AnhDaiDien ? apiUrl(c.AnhDaiDien) : "https://cdn-icons-png.flaticon.com/512/149/149071.png";
-        
-        let when = "";
-        if (c.NgayTao) {
-            const date = new Date(c.NgayTao);
-            when = date.toLocaleDateString("vi-VN");
-        }
-
-        const cId = c.Id || c.BinhLuanId || c.binh_luan_id;
-        const cOwnerId = c.NguoiDungId || c.nguoi_dung_id;
-        const canDelete = currentUid && (currentUid == cOwnerId || currentUid == videoOwnerId);
-
-        row.innerHTML = `
-            <img src="${avatar}" class="comment-avatar">
-            <div class="comment-content" style="flex: 1;">
-                <div class="comment-author" style="display: flex; justify-content: space-between;">
-                    <span>${escapeHtml(who)} <span style="font-weight: normal; color: #606060; font-size: 12px; margin-left: 8px;">${when}</span></span>
-                    ${canDelete ? `<button onclick="deleteComment(${cId}, event)" style="background: none; border: none; color: #999; cursor: pointer; font-size: 11px;">Xoá</button>` : ''}
-                </div>
-                <div class="comment-text">${escapeHtml(c.NoiDung || "")}</div>
-            </div>
-        `;
-        list.appendChild(row);
+    for (const c of sorted) {
+        addSingleCommentToUI(c, videoOwnerId);
     }
 }
 
@@ -357,7 +373,13 @@ window.addEventListener("DOMContentLoaded", async () => {
             const d = await parseJsonResponse(r);
             if (d.ok) {
                 document.getElementById("commentInput").value = "";
-                loadComments();
+                // loadComments(); // KHÔNG CẦN TẢI LẠI, Socket sẽ tự push
+                if (typeof cancelComment === "function") cancelComment();
+            } else {
+                alert("Lỗi bình luận: " + (d.error || "Không rõ nguyên nhân"));
+                if (r.status === 401 || r.status === 403) {
+                    console.warn("Token hết hạn hoặc không hợp lệ, yêu cầu đăng nhập lại.");
+                }
             }
         };
 
@@ -437,6 +459,40 @@ window.addEventListener("DOMContentLoaded", async () => {
                 recordWatchHistory();
             }
         };
+
+        // --- REAL-TIME LOGIC ---
+        if (typeof socket !== 'undefined' && socket) {
+            // Tham gia phòng video
+            socket.emit("joinVideo", id);
+
+            // Nghe bình luận mới
+            socket.on("newComment", (newComment) => {
+                if (Number(newComment.VideoId || newComment.video_id) === Number(id)) {
+                    addSingleCommentToUI(newComment, creatorId);
+                }
+            });
+
+            // Nghe cập nhật Like
+            socket.on("updateLikes", (data) => {
+                if (Number(data.videoId) === Number(id)) {
+                    const likeCount = document.getElementById("likeCount");
+                    if (likeCount) likeCount.textContent = data.count;
+                }
+            });
+
+            // Nghe cập nhật View
+            socket.on("updateViews", (data) => {
+                if (Number(data.videoId) === Number(id)) {
+                    const viewCount = document.getElementById("viewCount");
+                    if (viewCount) viewCount.textContent = data.count;
+                }
+            });
+
+            // Rời phòng khi chuyển trang
+            window.addEventListener("beforeunload", () => {
+                socket.emit("leaveVideo", id);
+            });
+        }
 
     } catch (e) {
         setDetailStatus("Lỗi: " + e.message, true);

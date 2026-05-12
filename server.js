@@ -136,6 +136,20 @@ io.on("connection", (socket) => {
     console.log(`[Socket] User ${uid} registered with socket ${socket.id}`);
   });
 
+  // Tham gia phòng của một video cụ thể để nhận cập nhật real-time
+  socket.on("joinVideo", (videoId) => {
+    const room = `video_${videoId}`;
+    socket.join(room);
+    console.log(`[Socket] Socket ${socket.id} joined room ${room}`);
+  });
+
+  // Rời phòng video
+  socket.on("leaveVideo", (videoId) => {
+    const room = `video_${videoId}`;
+    socket.leave(room);
+    console.log(`[Socket] Socket ${socket.id} left room ${room}`);
+  });
+
   socket.on("disconnect", () => {
     if (socket.userId && userSockets.has(socket.userId)) {
       userSockets.get(socket.userId).delete(socket.id);
@@ -1525,10 +1539,19 @@ app.get("/api/videos/:id", optionalAuthenticateToken, async (req, res) => {
       });
     }
 
-    await pool
-      .request()
+    await pool.request()
       .input("Id", sql.Int, Math.trunc(id))
       .query("UPDATE dbo.video SET luot_xem = luot_xem + 1 WHERE video_id = @Id");
+    
+    // Phát tín hiệu cập nhật View real-time
+    const currentViews = await pool.request()
+      .input("Id", sql.Int, Math.trunc(id))
+      .query("SELECT luot_xem FROM dbo.video WHERE video_id = @Id");
+    
+    io.to(`video_${id}`).emit("updateViews", { 
+      videoId: id, 
+      count: currentViews.recordset?.[0]?.luot_xem || 0 
+    });
 
     // Track daily view in thong_ke table
     await updateDailyStats(pool, id, 'view');
@@ -1766,14 +1789,14 @@ app.post("/api/videos/:id/comments", authenticateToken, async (req, res) => {
     // Track daily comment in thong_ke table
     await updateDailyStats(pool, videoId, 'comment');
 
-    const row = inserted.recordset?.[0];
-    const name = await pool
-      .request()
-      .input("Uid", sql.Int, Math.trunc(bodyUserId))
-      .query("SELECT ten_dang_nhap AS TenDangNhap FROM dbo.nguoi_dung WHERE nguoi_dung_id = @Uid");
-    const ten = name.recordset?.[0]?.TenDangNhap ?? null;
+    const commentData = row ? { ...row, TenDangNhap: ten, AnhDaiDien: userOk.recordset?.[0]?.anh_dai_dien } : null;
+    
+    // Gửi thông báo real-time cho tất cả người đang xem video này
+    if (commentData) {
+      io.to(`video_${videoId}`).emit("newComment", commentData);
+    }
 
-    // Thông báo cho chủ video
+    // Thông báo cho chủ video (chuông thông báo)
     const videoOwner = await pool.request()
       .input("Vid", sql.Int, videoId)
       .query("SELECT nguoi_dung_id, tieu_de FROM dbo.video WHERE video_id = @Vid");
@@ -1786,7 +1809,7 @@ app.post("/api/videos/:id/comments", authenticateToken, async (req, res) => {
 
     res.json({
       ok: true,
-      comment: row ? { ...row, TenDangNhap: ten } : null,
+      comment: commentData,
     });
   } catch (err) {
     res.status(500).json({ ok: false, error: err?.message || String(err) });
@@ -1907,12 +1930,12 @@ app.post("/api/videos/:id/likes/toggle", authenticateToken, async (req, res) => 
       }
     }
 
-    const cnt = await pool
-      .request()
-      .input("Vid", sql.Int, Math.trunc(videoId))
-      .query("SELECT COUNT(*) AS n FROM dbo.luot_thich WHERE video_id = @Vid");
+    const finalCnt = Number(cnt.recordset?.[0]?.n ?? 0);
 
-    res.json({ ok: true, liked, count: Number(cnt.recordset?.[0]?.n ?? 0) });
+    // Phát tín hiệu cập nhật Like real-time
+    io.to(`video_${videoId}`).emit("updateLikes", { videoId, count: finalCnt });
+
+    res.json({ ok: true, liked, count: finalCnt });
   } catch (err) {
     res.status(500).json({ ok: false, error: err?.message || String(err) });
   }

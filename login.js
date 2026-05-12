@@ -61,12 +61,16 @@ function showLoggedState(user) {
 
 window.addEventListener("DOMContentLoaded", () => {
     const saved = localStorage.getItem("current_user") || localStorage.getItem("currentUser");
-    if (saved) {
+    const token = localStorage.getItem("auth_token");
+
+    if (saved && token) {
         try {
             showLoggedState(JSON.parse(saved));
         } catch {
             showLoggedState(null);
         }
+    } else {
+        showLoggedState(null);
     }
 
     const form = document.getElementById("authForm");

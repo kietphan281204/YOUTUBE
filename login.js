@@ -7,6 +7,21 @@ function apiUrl(path) {
     return API_BASE ? `${API_BASE}${p}` : p;
 }
 
+/**
+ * Hàm hỗ trợ gọi API, tự động thêm Header ngrok và Authorization token (JWT)
+ */
+function apiFetch(path, init = {}) {
+    const headers = new Headers(init.headers || {});
+    headers.set("ngrok-skip-browser-warning", "1");
+    
+    const token = localStorage.getItem("auth_token");
+    if (token) {
+        headers.set("Authorization", `Bearer ${token}`);
+    }
+
+    return fetch(apiUrl(path), { ...init, headers });
+}
+
 let isLoginMode = true;
 
 function setAuthStatus(msg, isError = false) {
@@ -94,11 +109,10 @@ window.addEventListener("DOMContentLoaded", () => {
                 let res;
                 if (isLoginMode) {
                     // Đăng nhập dùng JSON
-                    res = await fetch(apiUrl("/api/auth/login"), {
+                    res = await apiFetch("/api/auth/login", {
                         method: "POST",
                         headers: { 
-                            "Content-Type": "application/json",
-                            "ngrok-skip-browser-warning": "1"
+                            "Content-Type": "application/json"
                         },
                         body: JSON.stringify({ login: username, password }),
                     });
@@ -113,9 +127,8 @@ window.addEventListener("DOMContentLoaded", () => {
                         formData.append("avatar", avatarFile);
                     }
 
-                    res = await fetch(apiUrl("/api/auth/register-request"), {
+                    res = await apiFetch("/api/auth/register-request", {
                         method: "POST",
-                        headers: { "ngrok-skip-browser-warning": "1" },
                         body: formData,
                     });
                 }
@@ -215,9 +228,9 @@ async function sendRecoveryCode() {
     if (!email) return alert("Vui lòng nhập email");
 
     try {
-        const res = await fetch(apiUrl("/api/auth/forgot-password"), {
+        const res = await apiFetch("/api/auth/forgot-password", {
             method: "POST",
-            headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "1" },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email })
         });
         const data = await res.json();
@@ -239,9 +252,9 @@ async function resetPassword() {
     if (!code || !newPassword) return alert("Vui lòng điền đầy đủ mã và mật khẩu mới");
 
     try {
-        const res = await fetch(apiUrl("/api/auth/reset-password"), {
+        const res = await apiFetch("/api/auth/reset-password", {
             method: "POST",
-            headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "1" },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email, code, newPassword })
         });
         const data = await res.json();

@@ -136,47 +136,51 @@ async function ensureColumnsExist() {
         );
       END
 
-      -- FIX TRIỆT ĐỂ QUAN HỆ TRÊN DIAGRAM
+      -- FIX TRIỆT ĐỂ QUAN HỆ TRÊN DIAGRAM (Bản nâng cao)
+      -- FIX TRIỆT ĐỂ QUAN HỆ TRÊN DIAGRAM (Bản nâng cao)
       USE VIDEO1;
+      BEGIN TRY
+          -- 1. Xóa TẤT CẢ các khóa ngoại cũ nối từ kiem_duyet_video đến tai_khoan_admin
+          -- (Phải xóa ngọn trước khi sửa gốc)
+          DECLARE @SqlFK NVARCHAR(MAX) = '';
+          SELECT @SqlFK += 'ALTER TABLE dbo.kiem_duyet_video DROP CONSTRAINT ' + QUOTENAME(name) + ';'
+          FROM sys.foreign_keys 
+          WHERE parent_object_id = OBJECT_ID('dbo.kiem_duyet_video') 
+            AND referenced_object_id = OBJECT_ID('dbo.tai_khoan_admin');
+          IF @SqlFK <> '' EXEC(@SqlFK);
 
-      -- 1. Xóa các bản ghi rác trong bảng kiểm duyệt (nếu admin_username không tồn tại trong bảng admin)
-      -- Điều này giúp tránh lỗi "The ALTER TABLE statement conflicted with the FOREIGN KEY constraint"
-      IF OBJECT_ID('dbo.kiem_duyet_video', 'U') IS NOT NULL
-      BEGIN
+          -- 2. Xóa các ràng buộc UNIQUE cũ của bảng admin (để tạo cái mới chuẩn tên)
+          DECLARE @SqlUQ NVARCHAR(MAX) = '';
+          SELECT @SqlUQ += 'ALTER TABLE dbo.tai_khoan_admin DROP CONSTRAINT ' + QUOTENAME(name) + ';'
+          FROM sys.objects 
+          WHERE parent_object_id = OBJECT_ID('dbo.tai_khoan_admin') AND type = 'UQ';
+          IF @SqlUQ <> '' EXEC(@SqlUQ);
+
+          -- 3. Tạo lại Ràng buộc UNIQUE chuẩn cho username
+          IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE name = 'UQ_Admin_User' AND type = 'UQ')
+             ALTER TABLE dbo.tai_khoan_admin ADD CONSTRAINT UQ_Admin_User UNIQUE (username);
+
+          -- 4. Dọn rác dữ liệu (nếu có admin_username không tồn tại)
           DELETE FROM dbo.kiem_duyet_video 
-          WHERE admin_username NOT IN (SELECT username FROM dbo.tai_khoan_admin)
-          OR admin_username IS NULL;
-      END
+          WHERE admin_username NOT IN (SELECT username FROM dbo.tai_khoan_admin) OR admin_username IS NULL;
 
-      -- 2. Đảm bảo bảng tai_khoan_admin có ràng buộc UNIQUE chuẩn tên
-      IF EXISTS (SELECT * FROM sys.tables WHERE name = 'tai_khoan_admin')
-      BEGIN
-          IF NOT EXISTS (SELECT * FROM sys.objects WHERE name = 'UQ_Admin_User' AND type = 'UQ')
-          BEGIN
-              -- Thử xóa các UQ cũ nếu có để đồng bộ
-              DECLARE @UQName NVARCHAR(200);
-              SELECT TOP 1 @UQName = name FROM sys.objects WHERE parent_object_id = OBJECT_ID('dbo.tai_khoan_admin') AND type = 'UQ';
-              IF @UQName IS NOT NULL EXEC('ALTER TABLE dbo.tai_khoan_admin DROP CONSTRAINT ' + @UQName);
-              
-              ALTER TABLE dbo.tai_khoan_admin ADD CONSTRAINT UQ_Admin_User UNIQUE (username);
-          END
-      END
+          -- 5. Tạo lại Khóa ngoại Admin
+          IF NOT EXISTS (SELECT * FROM sys.foreign_keys WHERE name = 'FK_Admin_KiemDuyet')
+             ALTER TABLE dbo.kiem_duyet_video ADD CONSTRAINT FK_Admin_KiemDuyet 
+             FOREIGN KEY (admin_username) REFERENCES dbo.tai_khoan_admin(username);
 
-      -- 3. Thiết lập lại khóa ngoại nối giữa Admin và Kiểm duyệt
-      IF EXISTS (SELECT * FROM sys.tables WHERE name = 'kiem_duyet_video')
-      BEGIN
-          -- Xóa FK cũ nếu có (bất kể tên là gì) để tạo mới cho chuẩn
-          DECLARE @FKName NVARCHAR(200);
-          SELECT TOP 1 @FKName = name FROM sys.foreign_keys WHERE parent_object_id = OBJECT_ID('dbo.kiem_duyet_video') AND referenced_object_id = OBJECT_ID('dbo.tai_khoan_admin');
-          IF @FKName IS NOT NULL EXEC('ALTER TABLE dbo.kiem_duyet_video DROP CONSTRAINT ' + @FKName);
+          -- 6. Tạo lại Khóa ngoại Video (nếu chưa có)
+          IF NOT EXISTS (SELECT * FROM sys.foreign_keys WHERE parent_object_id = OBJECT_ID('dbo.kiem_duyet_video') AND referenced_object_id = OBJECT_ID('dbo.video'))
+             ALTER TABLE dbo.kiem_duyet_video ADD CONSTRAINT FK_KiemDuyet_Video 
+             FOREIGN KEY (video_id) REFERENCES dbo.video(video_id) ON DELETE CASCADE;
 
-          -- Tạo khóa ngoại mới
-          ALTER TABLE dbo.kiem_duyet_video 
-          ADD CONSTRAINT FK_Admin_KiemDuyet 
-          FOREIGN KEY (admin_username) REFERENCES dbo.tai_khoan_admin(username);
-      END
+      END TRY
+      BEGIN CATCH
+          -- In lỗi ra console của SQL nếu cần, nhưng không làm dừng script
+          PRINT ERROR_MESSAGE();
+      END CATCH
     `);
-    console.log("[db] Final fix for Admin-Video relationship applied.");
+    console.log("[db] Admin system relationships successfully refreshed.");
   } catch (err) {
     console.error("[db] Error ensuring database structure:", err.message);
   }

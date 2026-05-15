@@ -107,8 +107,36 @@ async function ensureColumnsExist() {
           CONSTRAINT FK_lich_su_xem_video FOREIGN KEY (video_id) REFERENCES dbo.video(video_id) ON DELETE CASCADE
         );
       END
+
+      -- Tạo bảng tài khoản admin nếu chưa có
+      IF OBJECT_ID('dbo.tai_khoan_admin', 'U') IS NULL
+      BEGIN
+        CREATE TABLE dbo.tai_khoan_admin (
+          id INT IDENTITY(1,1) PRIMARY KEY,
+          username NVARCHAR(50) NOT NULL UNIQUE,
+          password NVARCHAR(MAX) NOT NULL
+        );
+        -- Seed admin:admin
+        INSERT INTO dbo.tai_khoan_admin (username, password) 
+        VALUES (N'admin', N'8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918');
+      END
+
+      -- Tạo bảng kiểm duyệt video nếu chưa có
+      IF OBJECT_ID('dbo.kiem_duyet_video', 'U') IS NULL
+      BEGIN
+        CREATE TABLE dbo.kiem_duyet_video (
+          id INT IDENTITY(1,1) PRIMARY KEY,
+          video_id INT NOT NULL,
+          admin_username NVARCHAR(50) NOT NULL,
+          trang_thai_moi NVARCHAR(50) NOT NULL,
+          ly_do NVARCHAR(MAX),
+          ngay_duyet DATETIME DEFAULT GETDATE(),
+          CONSTRAINT FK_kiem_duyet_video FOREIGN KEY (video_id) REFERENCES dbo.video(video_id) ON DELETE CASCADE,
+          CONSTRAINT FK_kiem_duyet_admin FOREIGN KEY (admin_username) REFERENCES dbo.tai_khoan_admin(username)
+        );
+      END
     `);
-    console.log("[db] Checked/Added missing columns and tables: do_tuoi, danh_cho_tre_em, dang_ky_kenh, thong_bao, lich_su_xem");
+    console.log("[db] Checked/Added missing columns and tables: do_tuoi, danh_cho_tre_em, dang_ky_kenh, thong_bao, lich_su_xem, tai_khoan_admin, kiem_duyet_video");
   } catch (err) {
     console.error("[db] Error ensuring database structure:", err.message);
   }

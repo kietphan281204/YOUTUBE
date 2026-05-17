@@ -249,7 +249,12 @@
                     return;
                 }
 
-                const response = await fetch(`${API_BASE}/api/stats/${user.nguoi_dung_id}`);
+                const token = localStorage.getItem("auth_token");
+                const response = await fetch(`${API_BASE}/api/stats/${user.nguoi_dung_id}`, {
+                    headers: {
+                        "Authorization": `Bearer ${token}`
+                    }
+                });
                 const text = await response.text();
                 let data = null;
                 try {

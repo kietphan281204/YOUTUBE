@@ -1195,17 +1195,26 @@ app.get("/api/videos", optionalAuthenticateToken, async (req, res) => {
     }
     
     if (searchQuery) {
-      q += " AND (v.tieu_de LIKE @Search OR v.mo_ta LIKE @Search OR u.ten_dang_nhap LIKE @Search)";
-      request.input("Search", sql.NVarChar(255), `%${searchQuery}%`);
+      const words = searchQuery.split(/\s+/).filter(w => w.length > 0);
+      if (words.length > 0) {
+        const wordConditions = words.map((word, i) => {
+          request.input(`SearchWord${i}`, sql.NVarChar(255), `%${word}%`);
+          return `(v.tieu_de LIKE @SearchWord${i} OR v.mo_ta LIKE @SearchWord${i} OR u.ten_dang_nhap LIKE @SearchWord${i})`;
+        });
+        // Tìm kiếm các video chứa TẤT CẢ các từ khóa (không phân biệt thứ tự)
+        q += " AND (" + wordConditions.join(" AND ") + ")";
+      }
+
       request.input("SearchExact", sql.NVarChar(255), searchQuery);
       request.input("SearchPrefix", sql.NVarChar(255), `${searchQuery}%`);
-      request.input("SearchWord", sql.NVarChar(255), `% ${searchQuery} %`);
+      request.input("SearchContains", sql.NVarChar(255), `%${searchQuery}%`);
       
       q += ` ORDER BY
         CASE
           WHEN LOWER(v.tieu_de) = LOWER(@SearchExact) OR LOWER(u.ten_dang_nhap) = LOWER(@SearchExact) THEN 0
           WHEN LOWER(v.tieu_de) LIKE LOWER(@SearchPrefix) OR LOWER(u.ten_dang_nhap) LIKE LOWER(@SearchPrefix) THEN 1
-          ELSE 2
+          WHEN v.tieu_de LIKE @SearchContains THEN 2
+          ELSE 3
         END, 
         CASE WHEN dk.dang_ky_id IS NOT NULL THEN 0 ELSE 1 END ASC,
         v.video_id DESC`;

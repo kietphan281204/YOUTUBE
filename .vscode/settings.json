@@ -2,8 +2,8 @@
   "mssql.connections": [
     {
       "id": "LocalSQLExpress",
-      "server": "DESKTOP-C1GBK5B\\SQLEXPRESS",
-      "database": "master",
+      "server": "127.0.0.1,1433",
+      "database": "VIDEO1",
       "authenticationType": "SqlLogin",
       "user": "sa",
       "password": "",
@@ -11,7 +11,7 @@
       "profileName": "Local SQL Express",
       "groupId": "ROOT",
       "profileSource": 0,
-      "encrypt": "Mandatory",
+      "encrypt": false,
       "trustServerCertificate": true
     }
   ]

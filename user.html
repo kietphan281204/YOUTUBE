@@ -128,8 +128,8 @@
             }
 
             try {
-                // Sử dụng API history để lấy danh sách video của user này
-                const res = await apiFetch(`/api/videos/history/${userId}`);
+                // Sử dụng API lấy danh sách video do user này tải lên
+                const res = await apiFetch(`/api/videos?userId=${userId}`);
                 const data = await parseJsonResponse(res);
                 
                 if (data.ok && Array.isArray(data.videos)) {

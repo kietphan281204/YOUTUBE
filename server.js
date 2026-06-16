@@ -1165,6 +1165,7 @@ app.get("/api/videos", optionalAuthenticateToken, async (req, res) => {
     let q = `
       SELECT TOP (100) 
         v.video_id AS Id, 
+        v.nguoi_dung_id AS NguoiDungId,
         v.tieu_de AS Title, 
         v.mo_ta AS Description, 
         v.duong_dan_video AS RelativeUrl, 
